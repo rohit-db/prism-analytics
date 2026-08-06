@@ -1,0 +1,23 @@
+{
+  "identity": {
+    "appName": "Cascade Hotels",
+    "shortName": "Cascade",
+    "tagline": "Owner Portal",
+    "logo": "/brand/logo.svg",
+    "logoMark": "/brand/mark.svg",
+    "favicon": "/brand/favicon.svg"
+  },
+  "colors": {
+    "accent": "#0b6b63",
+    "primary": "#0b6b63",
+    "primaryDark": "#074c46",
+    "primaryLight": "#d6f2ee",
+    "accentDark": "#074c46",
+    "sidebarFrom": "#04302c",
+    "sidebarVia": "#074c46",
+    "sidebarTo": "#0b6b63"
+  },
+  "defaults": {
+    "theme": "light"
+  }
+}

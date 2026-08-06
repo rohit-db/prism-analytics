@@ -16,6 +16,15 @@ import {
   LayoutDashboard,
   BarChart3,
   ArrowLeft,
+  Plane,
+  ShoppingCart,
+  Package,
+  Percent,
+  Receipt,
+  BedDouble,
+  Building2,
+  CalendarCheck,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -66,6 +75,17 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
   BarChart3,
   ArrowLeftNav: ArrowLeft,
+  // KPI-tile icons referenced by content.config.json across verticals
+  // (travel / retail / hospitality).
+  Plane,
+  ShoppingCart,
+  Package,
+  Percent,
+  Receipt,
+  BedDouble,
+  Building2,
+  CalendarCheck,
+  TrendingUp,
 };
 
 // ─── Filter state ───────────────────────────────────────────────────────────

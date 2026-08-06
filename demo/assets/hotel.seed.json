@@ -1,0 +1,63 @@
+{
+  "_note": "Asset registry for the Cascade Hotels demo instance (port 8002). Pointed at by ASSETS_SEED_FILE in demo/envs/hotel.env. Requires LAKEBASE_ENABLED=false on this instance, otherwise the shared Lakebase registry wins and every instance shows the same nav. Dashboard 01f1918a476c1402b644118695e2242d = 'Prism Hotel Performance' (published, embed_credentials=false). Page ids verified against the serialized dashboard: 0c6ea81b (Performance), properties, channels_demand, global_filters.",
+  "assets": {
+    "performance": {
+      "label": "Performance",
+      "dashboardId": "01f1918a476c1402b644118695e2242d",
+      "globalFilterPage": "global_filters",
+      "filters": {},
+      "pages": [
+        {
+          "pageId": "0c6ea81b",
+          "label": "Performance",
+          "summaryPrompt": "Write a concise executive summary of hotel PERFORMANCE for the current period. Cover total revenue, average daily rate, rooms sold and cancellation rate, and the revenue split across room, F&B and other. Call out the most significant year-over-year changes with specific numbers.",
+          "suggestions": [
+            "Total revenue by property this year?",
+            "How does ADR compare across property tiers?",
+            "How does revenue split across room, F&B and other?"
+          ]
+        },
+        {
+          "pageId": "properties",
+          "label": "Properties",
+          "summaryPrompt": "Write a concise executive summary of PROPERTY performance for the current period. Rank properties by revenue and ADR, note how performance varies by region and property tier, and identify the strongest and weakest properties with specific numbers.",
+          "suggestions": [
+            "Which properties generate the most revenue?",
+            "How does ADR vary by property tier?",
+            "Which regions are growing fastest?"
+          ]
+        }
+      ],
+      "nav": {
+        "path": "/performance",
+        "icon": "BedDouble",
+        "section": "insights",
+        "order": 1
+      }
+    },
+    "channels": {
+      "label": "Channels & Demand",
+      "dashboardId": "01f1918a476c1402b644118695e2242d",
+      "globalFilterPage": "global_filters",
+      "filters": {},
+      "pages": [
+        {
+          "pageId": "channels_demand",
+          "label": "Channels & Demand",
+          "summaryPrompt": "Write a concise executive summary of BOOKING CHANNEL and demand performance for the current period. Cover the channel mix, commission cost by channel, average lead time and market segment split. Identify which channels deliver the highest rate and the lowest acquisition cost, with specific numbers.",
+          "suggestions": [
+            "Which channels deliver the highest ADR?",
+            "What is commission cost by channel?",
+            "How does booking lead time vary by market segment?"
+          ]
+        }
+      ],
+      "nav": {
+        "path": "/channels",
+        "icon": "Building2",
+        "section": "insights",
+        "order": 2
+      }
+    }
+  }
+}

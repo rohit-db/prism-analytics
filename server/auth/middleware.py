@@ -28,6 +28,8 @@ _ALLOW_EXACT = {
     "/logout",
     "/favicon.ico",
     "/api/health",
+    # Brand + copy for the SPA's pre-session boot (presentation only, no tenant data).
+    "/api/config",
 }
 
 # Prefix-match public paths.

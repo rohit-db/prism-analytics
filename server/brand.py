@@ -14,8 +14,16 @@ from typing import Any
 
 logger = logging.getLogger("server.brand")
 
-# Repo root = parent of the server/ package dir.
-_BRAND_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "brand.config.json")
+# Repo root = parent of the server/ package dir. Override with BRAND_CONFIG_FILE to
+# run several differently-branded instances off ONE build (the multi-vertical demo).
+# Resolved per call, not at import, so editing the file is picked up on refresh.
+_DEFAULT_BRAND_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "brand.config.json"
+)
+
+
+def _brand_path() -> str:
+    return os.environ.get("BRAND_CONFIG_FILE", "").strip() or _DEFAULT_BRAND_PATH
 
 DEFAULT_BRAND: dict[str, Any] = {
     "identity": {
@@ -45,7 +53,7 @@ DEFAULT_BRAND: dict[str, Any] = {
 def load_brand() -> dict[str, Any]:
     """Return the parsed brand config, or DEFAULT_BRAND if unreadable."""
     try:
-        with open(_BRAND_PATH, encoding="utf-8") as fh:
+        with open(_brand_path(), encoding="utf-8") as fh:
             data = json.load(fh)
         # Shallow-merge over defaults so a partial config still works.
         merged = {**DEFAULT_BRAND, **data}

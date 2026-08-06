@@ -1,0 +1,53 @@
+{
+  "_note": "Asset registry for the Meridian Retail demo instance (port 8001). Pointed at by ASSETS_SEED_FILE in demo/envs/retail.env. Requires LAKEBASE_ENABLED=false on this instance, otherwise the shared Lakebase registry wins and every instance shows the same nav. Dashboard 01f18f35e0131e6293a3095ce556151b = 'Retail Merchandising Intelligence' (published in FEVM).",
+  "assets": {
+    "sales": {
+      "label": "Sales & Margin",
+      "dashboardId": "01f18f35e0131e6293a3095ce556151b",
+      "globalFilterPage": "global_filters",
+      "filters": {},
+      "pages": [
+        {
+          "pageId": "8b6cb582",
+          "label": "Sales & Margin",
+          "summaryPrompt": "Write a concise executive summary of retail SALES and MARGIN for the current period. Cover net sales, gross margin and margin rate, the strongest and weakest departments, and the most significant year-over-year changes. Use specific numbers and keep it to a few short paragraphs.",
+          "suggestions": [
+            "Net sales by department this year?",
+            "Which categories have the best gross margin?",
+            "Compare net sales this year vs last year by channel?"
+          ]
+        }
+      ],
+      "nav": {
+        "path": "/sales",
+        "icon": "DollarSign",
+        "section": "insights",
+        "order": 1
+      }
+    },
+    "promo": {
+      "label": "Inventory & Promo",
+      "dashboardId": "01f18f35e0131e6293a3095ce556151b",
+      "globalFilterPage": "global_filters",
+      "filters": {},
+      "pages": [
+        {
+          "pageId": "inventory_promo",
+          "label": "Inventory & Promo",
+          "summaryPrompt": "Write a concise executive summary of PROMOTION and INVENTORY performance for the current period. Cover discount rate, promotional lift, sell-through and return rate, calling out the categories where promotions worked best and worst. Use specific numbers.",
+          "suggestions": [
+            "How did promotions affect sell-through?",
+            "What is the discount rate by department?",
+            "Which categories have the highest return rate?"
+          ]
+        }
+      ],
+      "nav": {
+        "path": "/promo",
+        "icon": "Package",
+        "section": "insights",
+        "order": 2
+      }
+    }
+  }
+}

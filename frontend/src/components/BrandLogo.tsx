@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { brand } from "@/theme/brand";
+import { useBrand } from "@/appconfig/useAppConfig";
 import { cn } from "@/lib/utils";
 
 export function BrandLogo({
@@ -10,6 +10,8 @@ export function BrandLogo({
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
+  // Runtime brand, so a config-only re-skin updates the logo/monogram too.
+  const brand = useBrand();
   const src = variant === "full" ? brand.identity.logo : brand.identity.logoMark;
   const mono = brand.identity.shortName.slice(0, 1).toUpperCase();
 

@@ -14,6 +14,11 @@ app.add_middleware(SessionGateMiddleware)
 from server.routes.api import router as api_router
 app.include_router(api_router, prefix="/api")
 
+# Runtime brand + copy (GET /api/config). Read per request so a config edit needs no
+# rebuild or restart — the seam that lets one build serve several branded instances.
+from server.routes.app_config import router as app_config_router
+app.include_router(app_config_router, prefix="/api")
+
 from server.routes.genie_mcp import router as genie_mcp_router
 app.include_router(genie_mcp_router, prefix="/api")
 

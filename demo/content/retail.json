@@ -1,0 +1,22 @@
+{
+  "hero": {
+    "title": "Vendor Performance",
+    "subtitle": "Sell-through, margin and promotion performance across your brands and doors."
+  },
+  "kpis": [
+    { "key": "spend", "label": "Net Sales", "format": "currency", "icon": "DollarSign" },
+    { "key": "margin", "label": "Gross Margin", "format": "currency", "icon": "Percent" },
+    { "key": "units", "label": "Units Sold", "format": "number", "icon": "Package" },
+    { "key": "trips", "label": "Transactions", "format": "number", "icon": "Receipt" }
+  ],
+  "trend": {
+    "title": "Net sales trend",
+    "subtitle": "Monthly net sales"
+  },
+  "suggestedQuestions": [
+    "Net sales by department this year",
+    "Which categories have the best gross margin?",
+    "How did promotions affect sell-through?"
+  ],
+  "askPlaceholder": "Ask about sales, margin, units…"
+}

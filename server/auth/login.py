@@ -80,7 +80,7 @@ def _render_login_page(error: str | None = None, next_url: str = "/", mode: str 
           box-shadow:0px 8px 40px 0px rgba(0,0,0,0.13); padding:28px 26px 24px; }}
   .brand {{ display:flex; align-items:center; gap:9px; margin-bottom:4px; }}
   .brand .logo {{ width:30px;height:30px;border-radius:6px;
-                 background:linear-gradient(135deg,#4299e0 20.5%,#ca42e0 46.91%,#ff5f46 79.5%);
+                 background:linear-gradient(135deg,{colors['primary']} 0%,{colors['primaryDark']} 100%);
                  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:14px; }}
   .brand h1 {{ font-size:18px; line-height:24px; margin:0; font-weight:600; letter-spacing:-0.01em; color:#161616; }}
   .sub {{ color:#6f6f6f; font-size:13px; margin:4px 0 18px 1px; }}

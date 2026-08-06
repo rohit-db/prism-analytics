@@ -1,0 +1,23 @@
+{
+  "identity": {
+    "appName": "Meridian Retail",
+    "shortName": "Meridian",
+    "tagline": "Vendor Portal",
+    "logo": "/brand/logo.svg",
+    "logoMark": "/brand/mark.svg",
+    "favicon": "/brand/favicon.svg"
+  },
+  "colors": {
+    "accent": "#b8590a",
+    "primary": "#b8590a",
+    "primaryDark": "#8a4207",
+    "primaryLight": "#fdeeda",
+    "accentDark": "#8a4207",
+    "sidebarFrom": "#5c2c05",
+    "sidebarVia": "#8a4207",
+    "sidebarTo": "#b8590a"
+  },
+  "defaults": {
+    "theme": "light"
+  }
+}
