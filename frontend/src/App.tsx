@@ -159,9 +159,9 @@ export default function App() {
     <button
       onClick={() => navigate(ADMIN_ASSETS_PATH)}
       title={sidebarCollapsed ? "Admin" : undefined}
-      className={`group flex h-7 w-full items-center gap-2 rounded text-[13px] font-medium text-foreground transition-colors hover:bg-[var(--action-default-bg-hover)] ${sidebarCollapsed ? "justify-center px-0" : "px-3 text-left"}`}
+      className={`group flex h-7 w-full items-center gap-2 rounded text-[13px] font-medium text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground ${sidebarCollapsed ? "justify-center px-0" : "px-3 text-left"}`}
     >
-      <Settings size={16} className="shrink-0 text-muted-foreground group-hover:text-foreground" />
+      <Settings size={16} className="shrink-0 text-sidebar-foreground/60 group-hover:text-sidebar-foreground" />
       {!sidebarCollapsed && <span>Admin</span>}
     </button>
   ) : undefined;

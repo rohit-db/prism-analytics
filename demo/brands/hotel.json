@@ -8,14 +8,25 @@
     "favicon": "/brand/favicon.svg"
   },
   "colors": {
-    "accent": "#0b6b63",
-    "primary": "#0b6b63",
-    "primaryDark": "#074c46",
-    "primaryLight": "#d6f2ee",
-    "accentDark": "#074c46",
-    "sidebarFrom": "#04302c",
-    "sidebarVia": "#074c46",
-    "sidebarTo": "#0b6b63"
+    "accent": "#0f766e",
+    "accentAlt": "#0d9488",
+    "accentAlt2": "#65a30d",
+    "primary": "#0f766e",
+    "primaryDark": "#0a4f4a",
+    "primaryLight": "#d3f3ef",
+    "accentDark": "#0a4f4a",
+    "sidebarFrom": "#052e2b",
+    "sidebarVia": "#0a4f4a",
+    "sidebarTo": "#0f766e",
+    "sidebar": "#0c322f",
+    "sidebarForeground": "#e6f4f1"
+  },
+  "design": {
+    "radius": "0.125rem",
+    "fontSans": "'Inter', system-ui, sans-serif",
+    "fontDisplay": "'Fraunces', Georgia, 'Times New Roman', serif",
+    "fontUrl": "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap",
+    "headingTracking": "-0.01em"
   },
   "defaults": {
     "theme": "light"

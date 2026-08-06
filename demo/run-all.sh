@@ -73,9 +73,9 @@ start_instance() {
 }
 
 echo "Starting Prism demo (one build, three branded instances)…"
-# Travel uses the repo defaults (.env + brand.config.json) — no env file, and it keeps
-# Lakebase ON so conversation history and the tenant-isolation demo work.
-start_instance travel 8000 ""
+# Travel's env only adds branding + logos; the repo .env already points it at prism_travel
+# and it keeps Lakebase ON so history and the tenant-isolation demo work.
+start_instance travel 8000 "demo/envs/travel.env"
 start_instance retail 8001 "demo/envs/retail.env"
 start_instance hotel  8002 "demo/envs/hotel.env"
 

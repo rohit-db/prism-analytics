@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Cascade Hotels">
+  <defs>
+    <linearGradient id="cg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="55%" stop-color="#0d9488"/>
+      <stop offset="100%" stop-color="#65a30d"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="4" fill="url(#cg)"/>
+  <!-- Three descending arcs: a cascade motif. -->
+  <path d="M14 22c8 0 8 8 16 8s8-8 16-8" fill="none" stroke="#fff" stroke-width="3.6"
+        stroke-linecap="round" opacity="0.95"/>
+  <path d="M14 34c8 0 8 8 16 8s8-8 16-8" fill="none" stroke="#fff" stroke-width="3.6"
+        stroke-linecap="round" opacity="0.7"/>
+  <path d="M14 46c8 0 8 6 16 6s8-6 16-6" fill="none" stroke="#fff" stroke-width="3.6"
+        stroke-linecap="round" opacity="0.45"/>
+</svg>

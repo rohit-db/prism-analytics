@@ -24,11 +24,13 @@ describe("Sidebar", () => {
     expect(screen.getByText("Ask Prism")).toBeInTheDocument();
   });
 
-  it("marks the active route with the canonical active classes (bg-primary/10 text-primary)", () => {
+  it("marks the active route with the sidebar-scoped active classes", () => {
+    // Sidebar-scoped tokens (not bg-primary/text-primary) so nav stays legible when a
+    // brand flips the shell dark via colors.sidebar in its brand config.
     renderAt("/");
     const active = screen.getByText("Home").closest("button")!;
-    expect(active.className).toMatch(/bg-primary\/10/);
-    expect(active.className).toMatch(/text-primary/);
+    expect(active.className).toMatch(/bg-sidebar-primary\/15/);
+    expect(active.className).toMatch(/text-sidebar-primary/);
     expect(active.className).toMatch(/font-semibold/);
   });
 

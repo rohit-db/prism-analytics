@@ -57,6 +57,20 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     }
     styleEl.textContent = accentStyleSheet(brand);
 
+    // Load this brand's webfont, if it declares one. Injected rather than bundled so the
+    // typeface is part of the config payload — swapping brands swaps the type.
+    const fontUrl = brand.design?.fontUrl;
+    if (fontUrl) {
+      let link = document.getElementById("brand-font") as HTMLLinkElement | null;
+      if (!link) {
+        link = document.createElement("link");
+        link.id = "brand-font";
+        link.rel = "stylesheet";
+        document.head.appendChild(link);
+      }
+      if (link.href !== fontUrl) link.href = fontUrl;
+    }
+
     document.title = brand.identity.appName;
 
     const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
