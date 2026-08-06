@@ -105,13 +105,19 @@ Then the line that ties it together:
 ### The live re-skin (your closer — do this one, it lands)
 
 ```bash
-# In a terminal, edit either file and just refresh the browser. No restart. No rebuild.
-code demo/brands/retail.json      # change appName / accent
-code demo/content/retail.json     # change hero title / KPI labels
+# Edit either file and just refresh the browser. No restart. No rebuild.
+code demo/brands/retail.json      # appName, accent + gradient, radius, typeface
+code demo/content/retail.json     # hero title, KPI labels, suggested questions
 ```
 
 Change `appName` to something in the room — a colleague's account name works well — save,
 refresh tab 2. The app is now that company's product. **No build step. No deploy.**
+
+Worth calling out while you do it: what's config here isn't just colour. Each brand file
+carries its own **gradient**, **corner radius**, **typeface** and optionally a **dark
+sidebar** — which is why Meridian looks like a warm geometric retail tool and Cascade looks
+like an editorial serif hospitality product. Logos are per-instance too
+(`demo/logos/<name>/`, see that folder's README).
 
 *This is the proof of the whole thesis. Don't skip it.*
 
