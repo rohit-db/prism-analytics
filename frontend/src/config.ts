@@ -525,6 +525,7 @@ interface RouteNavLike {
   icon: string;
   section: RouteSection;
   order: number;
+  placeholder?: boolean;
 }
 interface AssetSpecLike {
   label: string;
