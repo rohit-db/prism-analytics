@@ -6,12 +6,18 @@ The browser only ever talks to the edge origin. For every request the edge:
      Databricks App, unchanged;
   2. injects ``Authorization: Bearer <edge-sp-token>`` so the Apps OAuth
      proxy admits the request (the end user never sees Databricks SSO);
-  3. relays the response back, rewriting ``Set-Cookie`` (drop ``Secure`` for
+  3. injects the signed-in user's identity as a cookie in the app's own session
+     format (see ``edge.appsession``), so the app can resolve the per-tenant
+     Service Principal instead of serving everyone as the app SP;
+  4. relays the response back, rewriting ``Set-Cookie`` (drop ``Secure`` for
      local http, drop upstream ``Domain``) and any ``Location`` that points at
      the upstream host so redirects stay on the edge origin.
 
-The app's own session cookie rides through in both directions. The edge bearer
-is purely the "get past the front door" credential.
+Two distinct credentials are at play and it is worth keeping them straight: the
+bearer is "get past the front door" (authenticates the *edge* to Databricks),
+while the injected session cookie is "who is asking" (authenticates the *end
+user* to the app). Only the former clears the OAuth proxy; only the latter
+drives tenant isolation.
 
 Note: AI/BI dashboards embedded via *basic embedding* load their iframe
 directly from the workspace origin (not through this edge), so they still rely
@@ -27,6 +33,7 @@ import httpx
 from fastapi import Request
 from fastapi.responses import Response
 
+from edge import appsession
 from edge.broker import broker
 from edge.config import CONFIG
 
@@ -47,6 +54,24 @@ async def aclose() -> None:
 
 def _filter_request_headers(headers) -> dict[str, str]:
     return {k: v for k, v in headers.items() if k.lower() not in _HOP_BY_HOP}
+
+
+def _set_upstream_cookie(cookie_header: str, name: str, value: str | None) -> str:
+    """Return ``cookie_header`` with ``name`` set to ``value`` (or removed).
+
+    Any client-supplied copy of ``name`` is dropped first. The browser talks
+    only to the edge, so a session cookie arriving from it is either stale or
+    forged — the edge is the sole authority on who the user is, and mints that
+    claim fresh on every request.
+    """
+    kept = [
+        c.strip()
+        for c in cookie_header.split(";")
+        if c.strip() and c.strip().split("=", 1)[0].strip() != name
+    ]
+    if value:
+        kept.append(f"{name}={value}")
+    return "; ".join(kept)
 
 
 def _rewrite_set_cookie(value: str) -> str:
@@ -88,9 +113,9 @@ def _filter_response_headers(resp: httpx.Response, edge_origin: str) -> list[tup
 
 async def proxy(request: Request, identity: dict | None = None) -> Response:
     """Forward one request upstream (the Databricks App) with the edge SP
-    bearer injected. If an authenticated edge ``identity`` is supplied, its
-    tenant/viewer are forwarded as ``X-Apex-*`` headers so the app can scope
-    embed tokens (``external_value``) per tenant."""
+    bearer injected. When an authenticated edge ``identity`` is supplied, a
+    session cookie in the app's own format is minted and injected so the app
+    resolves that user's tenant Service Principal."""
     url = f"{CONFIG.upstream}{request.url.path}"
     if request.url.query:
         url = f"{url}?{request.url.query}"
@@ -103,10 +128,18 @@ async def proxy(request: Request, identity: dict | None = None) -> Response:
         return Response(content=f"edge: could not mint SP token: {e}",
                         status_code=502, media_type="text/plain")
 
-    if identity:
-        headers["X-Apex-Viewer"] = str(identity.get("u", ""))
-        headers["X-Apex-Tenant"] = str(identity.get("tenant", ""))
-        headers["X-Apex-External-Value"] = str(identity.get("ext", ""))
+    # Hand the signed-in identity to the app in its own session format, and
+    # scrub any client-supplied copy even when unauthenticated.
+    app_session = appsession.mint_from_session(identity) if identity else None
+    if identity and not app_session:
+        logger.warning(
+            "AUTH_SESSION_SECRET is unset — %s will be served as the app SP, "
+            "not as tenant %r", identity.get("u"), identity.get("tenant_id"),
+        )
+    inbound = "; ".join(headers.pop(k) for k in list(headers) if k.lower() == "cookie")
+    cookies = _set_upstream_cookie(inbound, CONFIG.app_session_cookie, app_session)
+    if cookies:
+        headers["Cookie"] = cookies
 
     body = await request.body()
     try:

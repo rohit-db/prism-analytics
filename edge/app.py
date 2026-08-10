@@ -74,13 +74,26 @@ async def health() -> JSONResponse:
     })
 
 
+def _safe_next(next_url: str) -> str:
+    """Only same-site relative redirects.
+
+    ``//evil.com`` starts with "/" but is a protocol-relative URL, so a bare
+    ``startswith("/")`` check is an open redirect off the login page.
+    """
+    return next_url if next_url.startswith("/") and not next_url.startswith("//") else "/"
+
+
+def _mode(request: Request) -> str:
+    return "operator" if request.query_params.get("mode") == "operator" else "user"
+
+
 @app.get("/__edge/login")
 async def login_get(request: Request) -> HTMLResponse:
     """Branded custom-auth login page (the edge IdP stand-in)."""
     if verify_session(request.cookies.get(SESSION_COOKIE)):
         return RedirectResponse("/", status_code=303)  # type: ignore[return-value]
-    next_url = request.query_params.get("next", "/")
-    return HTMLResponse(render_login_page(next_url=next_url))
+    next_url = _safe_next(request.query_params.get("next", "/"))
+    return HTMLResponse(render_login_page(next_url=next_url, mode=_mode(request)))
 
 
 @app.post("/__edge/login")
@@ -88,14 +101,16 @@ async def login_post(request: Request) -> Response:
     form = await request.form()
     username = str(form.get("username", ""))
     password = str(form.get("password", ""))
-    next_url = str(form.get("next", "/")) or "/"
+    next_url = _safe_next(str(form.get("next", "/")) or "/")
+    mode = "operator" if str(form.get("mode", "")) == "operator" else "user"
     user = authenticate(username, password)
     if not user:
         return HTMLResponse(
-            render_login_page(error="Invalid email or password.", next_url=next_url),
+            render_login_page(error="Invalid email or password.",
+                              next_url=next_url, mode=mode),
             status_code=401,
         )
-    resp = RedirectResponse(next_url if next_url.startswith("/") else "/", status_code=303)
+    resp = RedirectResponse(next_url, status_code=303)
     resp.set_cookie(
         SESSION_COOKIE, issue_session(user),
         max_age=SESSION_TTL_SECONDS, httponly=True, samesite="lax",
@@ -105,11 +120,52 @@ async def login_post(request: Request) -> Response:
     return resp
 
 
-@app.get("/__edge/logout")
-async def logout(request: Request) -> Response:
+def _logout_response() -> Response:
+    """Drop both session cookies and send the user back to the edge login.
+
+    ``apex_edge_session`` is the credential that actually matters — it is what
+    the gate below checks and what the proxy re-mints the app session from. The
+    app's cookie is cleared too so no stale value is left in the browser, even
+    though the proxy strips client-supplied copies anyway.
+    """
     resp = RedirectResponse("/__edge/login", status_code=303)
     resp.delete_cookie(SESSION_COOKIE)
+    resp.delete_cookie(CONFIG.app_session_cookie)
     return resp
+
+
+@app.get("/__edge/logout")
+async def logout(request: Request) -> Response:
+    return _logout_response()
+
+
+# --- the app's own auth surface, intercepted -------------------------------
+# Behind the edge, the edge is the IdP: it holds the session and re-mints the
+# app's one on every proxied request. So the app's /logout cannot log anybody
+# out (it clears a cookie the proxy overwrites) and its /login would be a second,
+# different sign-in form. Both must be handled here instead of upstream. These
+# are declared before the catch-all because FastAPI matches in definition order.
+@app.get("/logout")
+@app.post("/logout")
+async def app_logout() -> Response:
+    return _logout_response()
+
+
+@app.get("/login")
+async def app_login(request: Request) -> Response:
+    nxt = request.query_params.get("next", "/")
+    return RedirectResponse(f"/__edge/login?next={nxt}", status_code=303)
+
+
+# Presentation assets the *login page itself* references, so they must be
+# reachable before there is a session. Brand logos and the favicon carry no
+# tenant data; everything else stays behind the gate.
+_PUBLIC_PREFIXES = ("/brand/",)
+_PUBLIC_EXACT = ("/favicon.ico", "/favicon.svg")
+
+
+def _is_public(path: str) -> bool:
+    return path in _PUBLIC_EXACT or path.startswith(_PUBLIC_PREFIXES)
 
 
 @app.api_route("/{full_path:path}",
@@ -117,6 +173,8 @@ async def logout(request: Request) -> Response:
 async def gateway(request: Request, full_path: str) -> Response:
     # Custom-auth gate: require a valid edge session before proxying upstream.
     session = verify_session(request.cookies.get(SESSION_COOKIE))
+    if not session and _is_public(request.url.path):
+        return await proxy.proxy(request, identity=None)
     if not session:
         accept = request.headers.get("accept", "")
         if "text/html" in accept:

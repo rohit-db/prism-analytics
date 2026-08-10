@@ -7,8 +7,9 @@ This app is a white-label reference. Rebrand it in **3 steps**:
    as CSS variables and mapped to Tailwind `brand-*` utilities.
 2. **Swap logo assets** in `frontend/public/brand/` (`logo.svg`, `mark.svg`,
    `favicon.svg`). Absent files fall back to a monogram derived from `shortName`.
-3. **Rebuild** — `cd frontend && npm run build`. The login page (server-rendered)
-   reads the same `brand.config.json`, so it rebrands too.
+3. **Rebuild** — `cd frontend && npm run build`. Both login screens
+   (server-rendered) read the same `brand.config.json`, so they rebrand too — the
+   app's `/login` and the edge gateway's `/__edge/login` share one template.
 
 ## `brand.config.json` schema
 
@@ -83,6 +84,9 @@ fallbacks used only when the registry is empty.
 - **Server:** `server/brand.py` exports `load_brand()` — fail-soft JSON read
   of the same `brand.config.json` (falls back to `DEFAULT_BRAND`, never raises).
   Used by the login page template and to set the FastAPI `app.title`.
+  `brand_asset_exists()` decides logo-vs-monogram: `identity.logoMark` is always
+  *named*, so only the file's presence can tell the template whether to emit an
+  `<img>` or fall back to the monogram.
 - **Tailwind utilities in use:** `brand-primary`, `brand-primary-dark`,
   `brand-primary-light`, `brand-accent`, `brand-accent-dark`,
   `brand-sidebar-from`, `brand-sidebar-via`, `brand-sidebar-to`,

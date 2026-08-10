@@ -28,39 +28,49 @@ targets:
       apps:
         prism-analytics:
           name: prism-analytics
-          source_code_path: /Workspace/Users/rohit.bhagwat@databricks.com/prism-analytics
-          config:
-            command:
-              - "python"
-              - "-m"
-              - "uvicorn"
-              - "app:app"
-              - "--host"
-              - "0.0.0.0"
-              - "--port"
-              - "8000"
-            env:
-              - name: DASHBOARD_URL
-                value: "https://fevm-serverless-stable-71zsua.cloud.databricks.com/embed/dashboardsv3/01f18f35b8561fb79677c244188f4c16?o=7474654199269365"
-              - name: MULTI_PAGE_DASHBOARD_URL
-                value: "https://fevm-serverless-stable-71zsua.cloud.databricks.com/embed/dashboardsv3/01f18f35b8561fb79677c244188f4c16?o=7474654199269365"
-              - name: GENIE_SPACE_ID
-                value: "01f18f363d9e193495d201f4b836151d"
-              - name: GENIE_MCP_POLL_INTERVAL_MS
-                value: "3000"
-              - name: GENIE_MCP_POLL_MAX_ATTEMPTS
-                value: "120"
+          # Where `bundle deploy` syncs the files listed under `sync.include`.
+          source_code_path: ${workspace.file_path}
+          # NOTE: deliberately no `config:` block here. A `config:` in the bundle
+          # overrides app.yaml, and keeping both in step by hand does not work —
+          # they silently drifted once already, which cost an afternoon. app.yaml
+          # ships with the source and is the single source of truth for the
+          # command and every env var, including the `valueFrom:` references to
+          # the resources below.
+          #
+          # Resources DO belong here: declaring them is what makes the bundle
+          # grant the app's Service Principal access on deploy.
           resources:
             - name: sql-warehouse
               sql_warehouse:
                 id: "28bc4299a384d531"
                 permission: CAN_USE
+            # User directory + tenant registry (apex_app_users,
+            # apex_client_registry, apex_sp_credentials).
+            - name: lakebase
+              database:
+                instance_name: "prism-edge"
+                database_name: "databricks_postgres"
+                permission: CAN_CONNECT_AND_CREATE
+            # Signs/verifies the white-label session the edge gateway mints.
+            - name: auth-session-secret
+              secret:
+                scope: "prism"
+                key: "auth-session-secret"
+                permission: READ
+            # Decrypts tenant SP credentials at rest.
+            - name: aes-key-base64
+              secret:
+                scope: "prism"
+                key: "aes-key-base64"
+                permission: READ
           user_api_scopes:
             - sql
             - genie
 
-  # The original BCD customer POC workspace. Kept for reference; the demo
-  # assets it points at live in a workspace we no longer deploy to.
+  # The original BCD customer POC workspace. Kept for reference; the demo assets
+  # it points at live in a workspace we no longer deploy to. It still carries an
+  # inline `config:` block because app.yaml is now FEVM-specific — deploying
+  # this target again would mean re-pointing app.yaml instead.
   bcd:
     workspace:
       host: https://dbc-1e27e56a-90cd.cloud.databricks.com

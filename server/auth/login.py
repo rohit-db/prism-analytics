@@ -22,7 +22,7 @@ import os
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from ..brand import load_brand
+from ..brand import brand_asset_exists, load_brand
 from . import users as users_repo
 from .sessions import SESSION_COOKIE, SESSION_TTL_SECONDS, create_session, verify_session
 
@@ -40,7 +40,24 @@ def _cookie_secure(request: Request) -> bool:
     return proto == "https"
 
 
-def _render_login_page(error: str | None = None, next_url: str = "/", mode: str = "user") -> str:
+def render_login_page(
+    error: str | None = None,
+    next_url: str = "/",
+    mode: str = "user",
+    action: str = "/login",
+    logins: list[dict] | None = None,
+    demo_password: str | None = None,
+) -> str:
+    """The white-label sign-in page.
+
+    Shared with the edge gateway (``edge/login_page.py``), which renders the same
+    markup against its own user directory and posts to ``/__edge/login``. Keeping
+    one renderer is deliberate: when the two were separate copies, the edge's
+    drifted and kept serving the previous brand long after the app was rebranded.
+
+    ``logins`` / ``demo_password`` default to this app's directory; callers with
+    their own directory pass theirs. ``action`` is the form's POST target.
+    """
     b = load_brand()
     ident = b["identity"]
     colors = b["colors"]
@@ -49,16 +66,19 @@ def _render_login_page(error: str | None = None, next_url: str = "/", mode: str 
     mark = html.escape(ident["shortName"][:1].upper())
     active_mode = "operator" if mode == "operator" else "user"
     show_demo = os.environ.get("AUTH_SHOW_DEMO_LOGINS", "true").strip().lower() not in ("0", "false", "no", "off")
-    demo_pw = users_repo.demo_password_hint() or ""
+    demo_pw = (
+        users_repo.demo_password_hint() or "" if demo_password is None else demo_password
+    )
     chips = ""
     if show_demo:
+        rows = users_repo.list_logins() if logins is None else logins
         chips = "\n".join(
             f"""<button type="button" class="chip" data-role="{html.escape(u.get('role', 'user'))}" data-u="{html.escape(u['email'])}" data-p="{html.escape(demo_pw)}">
                   <span class="chip-name">{html.escape(u['name'])}</span>
                   <span class="chip-tenant">{html.escape(u['tenant'])}</span>
                   <span class="chip-cred">{html.escape(u['email'])}{(' &middot; ' + html.escape(demo_pw)) if demo_pw else ''}</span>
                 </button>"""
-            for u in users_repo.list_logins()
+            for u in rows
         )
     # Per-brand shape + type, so the login screen matches the app's identity rather than
     # being a generically-styled page with the brand's color swapped in.
@@ -74,11 +94,13 @@ def _render_login_page(error: str | None = None, next_url: str = "/", mode: str 
         if design.get("fontUrl")
         else ""
     )
-    # Logo mark, when the instance ships one (BRAND_ASSETS_DIR); else the monogram.
+    # Logo mark, when the instance actually ships the file; else the monogram.
+    # The path is always *named* in brand config, so existence is what decides —
+    # otherwise an absent mark renders as a broken image instead of the monogram.
     logo_mark = ident.get("logoMark") or ""
     mark_html = (
         f'<img src="{html.escape(logo_mark, quote=True)}" alt="" width="30" height="30">'
-        if logo_mark
+        if logo_mark and brand_asset_exists(logo_mark)
         else mark
     )
     error_html = f'<div class="error">{html.escape(error)}</div>' if error else ""
@@ -141,7 +163,7 @@ def _render_login_page(error: str | None = None, next_url: str = "/", mode: str 
   body[data-active-mode="operator"] .chip[data-role="user"] {{ display:none; }}
 </style></head>
 <body data-active-mode="{active_mode}">
-  <form class="card" method="post" action="/login">
+  <form class="card" method="post" action="{html.escape(action, quote=True)}">
     <div class="mode-toggle" data-mode-toggle>
       <button type="button" class="mode-btn" data-mode="user">Sign in</button>
       <button type="button" class="mode-btn" data-mode="operator">Operator</button>
@@ -200,7 +222,7 @@ async def login_get(request: Request) -> Response:
         return RedirectResponse("/", status_code=303)
     next_url = _safe_next(request.query_params.get("next", "/"))
     mode = "operator" if request.query_params.get("mode") == "operator" else "user"
-    return HTMLResponse(_render_login_page(next_url=next_url, mode=mode))
+    return HTMLResponse(render_login_page(next_url=next_url, mode=mode))
 
 
 @router.post("/login")
@@ -213,7 +235,7 @@ async def login_post(request: Request) -> Response:
     user = users_repo.verify_login(username, password)
     if not user:
         return HTMLResponse(
-            _render_login_page(error="Invalid email or password.", next_url=next_url, mode=mode),
+            render_login_page(error="Invalid email or password.", next_url=next_url, mode=mode),
             status_code=401,
         )
     identity = {

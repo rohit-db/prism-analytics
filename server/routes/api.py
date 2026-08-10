@@ -2,6 +2,7 @@ import logging
 
 from fastapi import APIRouter, Request
 from ..config import get_workspace_client
+from ..auth.sessions import SESSION_COOKIE, verify_session
 from .. import assets as assets_registry
 from ..tenants.resolver import resolve_tenant_sp
 from ..tenants.resources import tenant_access
@@ -24,7 +25,29 @@ def health():
 
 
 @router.get("/me")
-def get_me():
+def get_me(request: Request):
+    """The caller's identity.
+
+    The white-label session is authoritative whenever one is present: end users
+    sign in against *this app* (or the edge gateway, which mints the same signed
+    cookie), so the Databricks identity behind the request is the app / tenant
+    Service Principal and must never be shown as the user. Only when there is no
+    session at all (``AUTH_ENABLED`` off) do we report the workspace identity.
+    """
+    identity = getattr(request.state, "identity", None) or verify_session(
+        request.cookies.get(SESSION_COOKIE)
+    )
+    if identity:
+        display_name = identity.get("display_name") or identity.get("email") or "User"
+        return {
+            "displayName": display_name,
+            "email": identity.get("email") or "",
+            "initials": compute_initials(display_name),
+            "role": identity.get("role", "user"),
+            "tenant": identity.get("tenant"),
+            "tenantId": identity.get("tenant_id"),
+        }
+
     try:
         w = get_workspace_client()
         me = w.current_user.me()

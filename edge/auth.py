@@ -9,9 +9,11 @@ directory, separate from Databricks workspace identity. If Lakebase is disabled
 or unreachable, we fall back to the in-code ``FALLBACK_USERS`` list so the demo
 still runs.
 
-Each user maps to a ``tenant`` and an ``external_value`` — the handle you'd pass
-to the embed token (``external_value``) so Unity Catalog row filters scope the
-dashboard to that tenant.
+Each user maps to a display ``tenant`` name and a ``tenant_id`` — the join key
+into ``apex_client_registry`` that selects the tenant's Service Principal. The
+app runs the AI/BI embed and Genie MCP as that SP, so the Unity Catalog row
+filter scopes the data. ``tenant_id`` must therefore match a ``tenant_id`` in
+the registry; ``*`` means operator / all-rows.
 
 Self-contained crypto (stdlib only): PBKDF2-HMAC-SHA256 for passwords,
 HMAC-SHA256 for the signed session cookie.
@@ -42,16 +44,19 @@ class DemoUser:
     username: str
     display_name: str
     tenant: str
-    external_value: str
+    tenant_id: str
     role: str = "user"
 
 
 # In-code fallback directory (used only if Lakebase is off/unreachable). The
 # canonical copy lives in Lakebase; this list also drives the one-time seed.
+# The ``tenant_id`` values must exist in ``apex_client_registry`` — a tenant
+# that is not onboarded resolves to no SP and falls back to the app SP, which
+# silently defeats row scoping.
 FALLBACK_USERS: tuple[DemoUser, ...] = (
-    DemoUser("alice@cloudventure.com", "Alice Chen", "CloudVenture", "cloudventure"),
-    DemoUser("ben@nike.com", "Ben Ortiz", "Nike", "nike"),
-    DemoUser("dana@advito.com", "Dana Lee", "Advito (All)", "*", role="operator"),
+    DemoUser("alice@acmetravel.com", "Alice Chen", "Acme Travel", "acme-travel"),
+    DemoUser("ben@globex.com", "Ben Ortiz", "Globex", "globex"),
+    DemoUser("dana@prism.example", "Dana Lee", "All Clients", "*", role="operator"),
 )
 _FALLBACK_BY_EMAIL = {u.username: u for u in FALLBACK_USERS}
 
@@ -94,7 +99,7 @@ def authenticate(username: str, password: str) -> DemoUser | None:
                 except Exception:  # noqa: BLE001
                     pass
                 return DemoUser(row.email, row.display_name, row.tenant,
-                                row.external_value, row.role)
+                                row.tenant_id, row.role)
             if row:  # found but wrong password — do not fall through
                 return None
         except Exception as e:  # noqa: BLE001
@@ -107,10 +112,12 @@ def authenticate(username: str, password: str) -> DemoUser | None:
 
 
 def list_logins() -> list[dict]:
-    """Sample logins for the login page chips: ``{name, tenant, email, password}``.
+    """Sample logins for the chips: ``{name, tenant, email, password, role}``.
 
     Sourced from Lakebase when enabled (password shown is the shared demo
-    password); otherwise the in-code fallback list.
+    password); otherwise the in-code fallback list. ``role`` is what the login
+    page's user/operator toggle filters on, so omitting it files every operator
+    under "Sign in".
     """
     if CONFIG.lakebase_enabled:
         try:
@@ -120,7 +127,7 @@ def list_logins() -> list[dict]:
             if rows:
                 return [
                     {"name": r.display_name, "tenant": r.tenant,
-                     "email": r.email, "password": DEMO_PASSWORD}
+                     "email": r.email, "password": DEMO_PASSWORD, "role": r.role}
                     for r in rows
                 ]
         except Exception as e:  # noqa: BLE001
@@ -128,7 +135,7 @@ def list_logins() -> list[dict]:
 
     return [
         {"name": u.display_name, "tenant": u.tenant,
-         "email": u.username, "password": DEMO_PASSWORD}
+         "email": u.username, "password": DEMO_PASSWORD, "role": u.role}
         for u in FALLBACK_USERS
     ]
 
@@ -147,7 +154,7 @@ def seed_users() -> int:
             password_hash=hash_password(DEMO_PASSWORD),
             display_name=u.display_name,
             tenant=u.tenant,
-            external_value=u.external_value,
+            tenant_id=u.tenant_id,
             role=u.role,
         )
     return len(FALLBACK_USERS)
@@ -172,7 +179,7 @@ def issue_session(user: DemoUser) -> str:
         "u": user.username,
         "name": user.display_name,
         "tenant": user.tenant,
-        "ext": user.external_value,
+        "tenant_id": user.tenant_id,
         "role": user.role,
         "exp": int(time.time()) + SESSION_TTL_SECONDS,
     }

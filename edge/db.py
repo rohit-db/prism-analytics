@@ -43,13 +43,34 @@ def _workspace_client():
 
 
 def _mint_token() -> str:
-    """Mint (and cache) a Lakebase database credential for the instance."""
+    """Mint (and cache) a Lakebase database credential for the instance.
+
+    Two APIs exist depending on SDK version: Lakebase Autoscaling projects mint
+    from an endpoint resource path via ``w.postgres``, while the newer Database
+    Instances API mints from instance names via ``w.database``. Try the former
+    and fall back, mirroring ``server.lakebase`` so both processes work against
+    the same instance on whichever SDK is installed.
+    """
     global _token, _token_exp
     with _lock:
         if _token and time.time() < _token_exp - 120:
             return _token
         w = _workspace_client()
-        cred = w.postgres.generate_database_credential(endpoint=CONFIG.pg_endpoint)
+        cred = None
+        if CONFIG.pg_endpoint:
+            try:
+                cred = w.postgres.generate_database_credential(  # type: ignore[attr-defined]
+                    endpoint=CONFIG.pg_endpoint
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.debug("postgres.generate_database_credential failed: %s", e)
+        if cred is None:
+            import uuid
+
+            cred = w.database.generate_database_credential(  # type: ignore[attr-defined]
+                request_id=str(uuid.uuid4()),
+                instance_names=[CONFIG.pg_instance],
+            )
         _token = cred.token
         # DatabaseCredential.expiration_time may be a datetime; default ~1h.
         _token_exp = time.time() + 3000

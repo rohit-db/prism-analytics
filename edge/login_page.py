@@ -1,89 +1,64 @@
-"""Branded APEX login page for the edge front door (custom authentication).
+"""The edge front door's login page.
 
-No framework/templating dependency — a single self-contained HTML string with
-the demo sample-logins injected. Posts to ``/__edge/login``.
+Presentation is **shared with the app** (``server.auth.login.render_login_page``)
+so the sign-in screen the user meets at the edge is the same one the app would
+serve: same brand, palette, type and chips. Only two things differ here — the
+form posts to ``/__edge/login``, and the sample logins come from the *edge's*
+user directory, which has its own Lakebase connection.
+
+The edge used to carry its own copy of this HTML. It drifted, and kept serving
+the previous brand long after the app was rebranded — which is why this is a
+delegation and not a copy. (Contrast ``edge/appsession.py``, where duplicating
+the crypto is deliberate: that is a wire contract with tests pinning it, not
+presentation.)
 """
 from __future__ import annotations
 
 import html
+import logging
 
-from edge.auth import list_logins
+from edge.auth import DEMO_PASSWORD, list_logins
+
+logger = logging.getLogger("edge.login_page")
+
+ACTION = "/__edge/login"
 
 
-def render_login_page(error: str | None = None, next_url: str = "/") -> str:
-    chips = "\n".join(
-        f"""<button type="button" class="chip" data-u="{html.escape(u['email'])}" data-p="{html.escape(u['password'])}">
-              <span class="chip-name">{html.escape(u['name'])}</span>
-              <span class="chip-tenant">{html.escape(u['tenant'])}</span>
-              <span class="chip-cred">{html.escape(u['email'])} &middot; {html.escape(u['password'])}</span>
-            </button>"""
-        for u in list_logins()
-    )
-    error_html = (
-        f'<div class="error">{html.escape(error)}</div>' if error else ""
-    )
+def render_login_page(error: str | None = None, next_url: str = "/", mode: str = "user") -> str:
+    try:
+        from server.auth.login import render_login_page as _render
+
+        return _render(
+            error=error,
+            next_url=next_url,
+            mode=mode,
+            action=ACTION,
+            logins=list_logins(),
+            demo_password=DEMO_PASSWORD,
+        )
+    except Exception as exc:  # noqa: BLE001 — a login screen must always render
+        logger.warning("shared login template unavailable (%s); using fallback", exc)
+        return _fallback_page(error=error, next_url=next_url)
+
+
+def _fallback_page(error: str | None = None, next_url: str = "/") -> str:
+    """Unstyled last resort, used only if the shared template cannot be imported.
+
+    Deliberately minimal: anything richer would be a second copy of the design,
+    which is the drift this module exists to avoid.
+    """
+    error_html = f'<p style="color:#9e102c">{html.escape(error)}</p>' if error else ""
     return f"""<!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in &middot; APEX Travel Intelligence</title>
-<style>
-  :root {{ --indigo:#4f46e5; --purple:#7c3aed; }}
-  * {{ box-sizing:border-box; }}
-  body {{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-         min-height:100vh; display:flex; align-items:center; justify-content:center;
-         background:linear-gradient(135deg,#1e1b4b 0%,#3730a3 50%,#6d28d9 100%); color:#0f172a; }}
-  .card {{ width:380px; background:#fff; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.35);
-          padding:30px 28px 26px; }}
-  .brand {{ display:flex; align-items:center; gap:9px; margin-bottom:4px; }}
-  .brand .logo {{ width:30px;height:30px;border-radius:8px;
-                 background:linear-gradient(135deg,var(--indigo),var(--purple));
-                 display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800; }}
-  .brand h1 {{ font-size:17px; margin:0; letter-spacing:.2px; }}
-  .sub {{ color:#64748b; font-size:12.5px; margin:2px 0 18px 1px; }}
-  label {{ font-size:12px; font-weight:600; color:#334155; display:block; margin:12px 0 6px; }}
-  input {{ width:100%; padding:11px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; }}
-  input:focus {{ outline:none; border-color:var(--indigo); box-shadow:0 0 0 3px rgba(79,70,229,.15); }}
-  button.submit {{ width:100%; margin-top:18px; padding:11px; border:0; border-radius:10px; color:#fff;
-                  font-size:14px; font-weight:600; cursor:pointer;
-                  background:linear-gradient(135deg,var(--indigo),var(--purple)); }}
-  button.submit:hover {{ filter:brightness(1.06); }}
-  .divider {{ display:flex; align-items:center; gap:10px; color:#94a3b8; font-size:11px;
-             text-transform:uppercase; letter-spacing:.08em; margin:20px 0 12px; }}
-  .divider::before, .divider::after {{ content:""; flex:1; height:1px; background:#e2e8f0; }}
-  .chips {{ display:flex; flex-direction:column; gap:8px; }}
-  .chip {{ text-align:left; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;
-          padding:9px 11px; cursor:pointer; display:grid; grid-template-columns:1fr auto; row-gap:2px; }}
-  .chip:hover {{ border-color:var(--indigo); background:#eef2ff; }}
-  .chip-name {{ font-size:13px; font-weight:600; }}
-  .chip-tenant {{ font-size:11px; color:#fff; background:var(--indigo); border-radius:999px;
-                 padding:1px 8px; justify-self:end; }}
-  .chip-cred {{ grid-column:1 / -1; font-size:11px; color:#64748b; font-family:ui-monospace,monospace; }}
-  .error {{ background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; border-radius:8px;
-           padding:8px 10px; font-size:12.5px; margin-bottom:12px; }}
-  .foot {{ text-align:center; color:#94a3b8; font-size:10.5px; margin-top:16px; }}
-</style></head>
-<body>
-  <form class="card" method="post" action="/__edge/login">
-    <div class="brand"><div class="logo">A</div><h1>APEX Travel Intelligence</h1></div>
-    <div class="sub">Sign in to your analytics workspace</div>
-    {error_html}
-    <input type="hidden" name="next" value="{html.escape(next_url)}">
-    <label for="u">Email</label>
-    <input id="u" name="username" type="email" autocomplete="username" placeholder="you@company.com" required>
-    <label for="p">Password</label>
-    <input id="p" name="password" type="password" autocomplete="current-password" placeholder="••••••" required>
-    <button class="submit" type="submit">Sign in</button>
-
-    <div class="divider">Sample logins</div>
-    <div class="chips">{chips}</div>
-    <div class="foot">Custom authentication &middot; powered by Databricks behind the scenes</div>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in</title></head>
+<body style="font-family:system-ui,sans-serif;max-width:22rem;margin:4rem auto">
+  <h1 style="font-size:1.1rem">Sign in</h1>
+  {error_html}
+  <form method="post" action="{ACTION}">
+    <input type="hidden" name="next" value="{html.escape(next_url, quote=True)}">
+    <p><label>Email<br><input name="username" type="email" required style="width:100%"></label></p>
+    <p><label>Password<br><input name="password" type="password" required style="width:100%"></label></p>
+    <button type="submit">Sign in</button>
   </form>
-  <script>
-    document.querySelectorAll(".chip").forEach(function(c) {{
-      c.addEventListener("click", function() {{
-        document.getElementById("u").value = c.dataset.u;
-        document.getElementById("p").value = c.dataset.p;
-      }});
-    }});
-  </script>
 </body></html>"""

@@ -68,3 +68,26 @@ def load_brand() -> dict[str, Any]:
 def brand_color(name: str) -> str:
     """One brand color hex by semantic name, falling back to the default."""
     return load_brand()["colors"].get(name, DEFAULT_BRAND["colors"].get(name, "#4f46e5"))
+
+
+def brand_asset_exists(url_path: str) -> bool:
+    """Whether a ``/brand/*`` URL actually resolves to a shipped file.
+
+    ``identity.logoMark`` is always *named* (config and defaults both set it), but
+    the file is optional — `frontend/public/brand/README.md` promises a monogram
+    fallback when it is absent. Server-rendered pages have to check for
+    themselves, or they emit an ``<img>`` for a 404 and show a broken image.
+
+    Mirrors how ``app.py`` serves the path: ``BRAND_ASSETS_DIR`` when set,
+    otherwise the built SPA's copy of ``frontend/public``.
+    """
+    if not url_path or not url_path.startswith("/"):
+        return False
+    root = os.path.dirname(os.path.dirname(__file__))
+    assets_dir = os.environ.get("BRAND_ASSETS_DIR", "").strip()
+    candidates = []
+    if assets_dir and os.path.isdir(assets_dir):
+        candidates.append(os.path.join(assets_dir, os.path.basename(url_path)))
+    candidates.append(os.path.join(root, "frontend", "dist", url_path.lstrip("/")))
+    candidates.append(os.path.join(root, "frontend", "public", url_path.lstrip("/")))
+    return any(os.path.isfile(p) for p in candidates)

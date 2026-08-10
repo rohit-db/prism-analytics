@@ -10,11 +10,6 @@ SSO**. This is the "Firefly" / OEM-analytics pattern from
                        front door                                        behind Apps OAuth proxy
 ```
 
-> **Identity stops at the edge today.** The proxy forwards the signed-in user as
-> `X-Apex-Viewer` / `X-Apex-Tenant` / `X-Apex-External-Value`, but `server/`
-> does not read those headers yet, so every user behind the edge is served as
-> the app Service Principal and per-tenant row filtering does not apply.
-
 The edge is a thin, transparent reverse proxy. For every request it injects an
 **edge Service Principal** OAuth token as `Authorization: Bearer …`, which is
 what clears the Databricks Apps OAuth proxy — so the browser never gets bounced
@@ -27,22 +22,37 @@ own IdP" layer of the OEM pattern. End users sign in against the edge (not
 Databricks); only then does the edge proxy them into the Databricks App. Until
 authenticated, any page navigation is redirected to the login screen.
 
+The page itself is the **app's** login template
+(`server.auth.login.render_login_page`), rendered with the edge's user directory
+and posting to `/__edge/login`. It is shared rather than copied on purpose: the
+edge used to carry its own copy, and it silently kept serving the previous brand
+after the app was rebranded. So the login screen picks up `brand.config.json`
+automatically, and `tests/test_edge_login_page.py` asserts the two pages' CSS is
+identical so they cannot drift again.
+
+Brand assets (`/brand/*`) and the favicon pass the edge gate unauthenticated,
+since the login page itself references them.
+
 ### Users live in Lakebase
 
-The login directory is stored in **Lakebase** (Databricks managed Postgres) —
-the edge's own `apex_app_users` table, separate from Databricks workspace
-identity. Passwords are PBKDF2-SHA256 hashes; the edge mints a short-lived
-Postgres OAuth credential via the Databricks SDK at connect time (no static DB
-password). If Lakebase is disabled (`EDGE_LAKEBASE_ENABLED=0`) or unreachable,
-the edge falls back to an in-code list so the demo never hard-breaks.
+The login directory is stored in **Lakebase** (Databricks managed Postgres) — the
+`apex_app_users` table, **shared with the app** so both sides resolve a user to
+the same `tenant_id`. That column is the join key into `apex_client_registry`;
+it is what selects the per-tenant Service Principal. Passwords are PBKDF2-SHA256
+hashes; the edge mints a short-lived Postgres OAuth credential via the Databricks
+SDK at connect time (no static DB password). If Lakebase is disabled
+(`EDGE_LAKEBASE_ENABLED=0`) or unreachable, the edge falls back to an in-code
+list so the demo never hard-breaks.
 
 Demo sample logins (seeded into Lakebase; shown on the login page, click to fill):
 
-| Email | Password | Tenant | `external_value` | Role |
+| Email | Password | Tenant | `tenant_id` | Role |
 |---|---|---|---|---|
-| `alice@cloudventure.com` | `apex` | CloudVenture | `cloudventure` | user |
-| `ben@nike.com` | `apex` | Nike | `nike` | user |
-| `dana@advito.com` | `apex` | Advito (All) | `*` | operator |
+| `alice@acmetravel.com` | `apex` | Acme Travel | `acme-travel` | user |
+| `ben@globex.com` | `apex` | Globex | `globex` | user |
+| `carol@initech.com` | `apex` | Initech | `initech` | user |
+| `erin@umbrella.com` | `apex` | Umbrella Corp | `umbrella` | user |
+| `dana@prism.example` | `apex` | All Clients | `*` | operator |
 
 **One-time setup:**
 
@@ -59,12 +69,46 @@ databricks postgres get-endpoint \
 python -m edge.seed_users
 ```
 
-The authenticated identity is forwarded upstream as `X-Apex-Viewer` /
-`X-Apex-Tenant` / `X-Apex-External-Value`, so the app can mint per-tenant embed
-tokens (`external_value`) and let Unity Catalog row filters scope each
-dashboard. In production, swap `edge/auth.py` for Azure AD B2C / Okta / Entra
-(keep the Lakebase table for app-level profile/tenant mapping) — the rest of the
-edge is unchanged. Sign out at `/__edge/logout`.
+### Handing the identity to the app
+
+A bearer token clears the OAuth proxy but says nothing about *which user* is
+asking — to the app, every request would look like the edge SP. So after
+authenticating, the edge **mints the app's own signed session cookie** and
+injects it on the upstream request (`edge/appsession.py` → `edge/proxy.py`). The
+app verifies it with `server/auth/sessions.verify_session`, and from there
+`resolve_tenant_sp()` swaps in that tenant's Service Principal — which is what
+makes the Unity Catalog row filter bite.
+
+Two properties make this safe, both pinned by `tests/test_edge_identity.py`:
+
+- **The browser cannot nominate its own identity.** Any client-supplied
+  `prism_session` cookie is stripped before the upstream call and replaced with
+  the edge-minted one (or dropped entirely when unauthenticated).
+- **Both sides share one signing secret** (`AUTH_SESSION_SECRET`) and one cookie
+  name (`AUTH_SESSION_COOKIE`). The edge reads them from the repo-root `.env`;
+  the app reads them from the `prism` secret scope. A mismatch fails closed —
+  the app rejects the session rather than trusting it.
+
+### The edge owns the auth surface
+
+Because the edge holds the session, `/login` and `/logout` are **handled by the
+edge, not proxied** (`edge/app.py`, declared before the catch-all):
+
+| Route | Behind the edge |
+|---|---|
+| `/logout` | Clears `apex_edge_session` **and** `prism_session`, redirects to `/__edge/login` |
+| `/login` | Redirects to `/__edge/login` (preserving `?next=`) |
+
+Without this, the app's own `/logout` clears only `prism_session` — which the
+proxy re-mints from the edge session on the very next request — so the user
+appears to sign out but stays logged in with no way back to the login screen.
+Its `/login` would likewise be a second, different sign-in form. Pinned by
+`tests/test_edge_logout.py`. The in-app "Sign out" button therefore works
+unchanged in both hosting models; `/__edge/logout` also still works directly.
+
+In production, swap `edge/auth.py` for Azure AD B2C / Okta / Entra (keep the
+Lakebase table for app-level profile/tenant mapping) — the rest of the edge is
+unchanged.
 
 `GET /__edge/health` reports `user_directory` (`lakebase` | `in-code fallback`)
 and `lakebase_ok` so you can confirm the directory is live.

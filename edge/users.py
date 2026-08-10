@@ -1,9 +1,15 @@
 """``apex_app_users`` CRUD against Lakebase Postgres.
 
-This is the edge's *own* user directory — the customer-facing login layer,
-deliberately separate from Databricks workspace identity. Each row maps a login
-to a tenant and an ``external_value`` (the handle passed to the AI/BI embed
-token so Unity Catalog row filters scope the dashboard per tenant).
+This is the customer-facing user directory — deliberately separate from
+Databricks workspace identity. Each row maps a login to a display ``tenant``
+name and a ``tenant_id``, the join key into ``apex_client_registry`` that
+selects the per-tenant Service Principal (and, through it, the Unity Catalog
+row filter that scopes the dashboard).
+
+The table is **shared with the app** (``server/auth/users.py``), which owns the
+canonical schema and the operator CRUD surface. The definition below must stay
+in step with it; the edge keeps its own copy of the queries only so it can run
+as a standalone process without importing the ``server`` package.
 """
 from __future__ import annotations
 
@@ -21,7 +27,7 @@ CREATE TABLE IF NOT EXISTS apex_app_users (
     password_hash   TEXT NOT NULL,
     display_name    VARCHAR(255) NOT NULL,
     tenant          VARCHAR(255) NOT NULL,
-    external_value  VARCHAR(255) NOT NULL DEFAULT '*',
+    tenant_id       VARCHAR(255) NOT NULL DEFAULT '*',
     role            VARCHAR(50)  NOT NULL DEFAULT 'user',
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     last_login_at   TIMESTAMPTZ
@@ -29,7 +35,7 @@ CREATE TABLE IF NOT EXISTS apex_app_users (
 CREATE INDEX IF NOT EXISTS idx_apex_app_users_email ON apex_app_users(email);
 """
 
-_COLS = "email, password_hash, display_name, tenant, external_value, role, last_login_at"
+_COLS = "email, password_hash, display_name, tenant, tenant_id, role, last_login_at"
 
 
 @dataclass(frozen=True)
@@ -38,7 +44,7 @@ class UserRow:
     password_hash: str
     display_name: str
     tenant: str
-    external_value: str
+    tenant_id: str
     role: str
     last_login_at: Optional[datetime]
 
@@ -46,7 +52,7 @@ class UserRow:
 def _row(r) -> UserRow:
     return UserRow(
         email=r[0], password_hash=r[1], display_name=r[2],
-        tenant=r[3], external_value=r[4], role=r[5], last_login_at=r[6],
+        tenant=r[3], tenant_id=r[4], role=r[5], last_login_at=r[6],
     )
 
 
@@ -73,19 +79,19 @@ def list_all() -> list[UserRow]:
 
 
 def upsert(*, email: str, password_hash: str, display_name: str,
-           tenant: str, external_value: str, role: str = "user") -> None:
+           tenant: str, tenant_id: str, role: str = "user") -> None:
     with db.get_connection() as conn:
         conn.execute(
             "INSERT INTO apex_app_users "
-            "(email, password_hash, display_name, tenant, external_value, role) "
+            "(email, password_hash, display_name, tenant, tenant_id, role) "
             "VALUES (%s, %s, %s, %s, %s, %s) "
             "ON CONFLICT (email) DO UPDATE SET "
             "  password_hash = EXCLUDED.password_hash, "
             "  display_name  = EXCLUDED.display_name, "
             "  tenant        = EXCLUDED.tenant, "
-            "  external_value = EXCLUDED.external_value, "
+            "  tenant_id     = EXCLUDED.tenant_id, "
             "  role          = EXCLUDED.role",
-            (email.lower(), password_hash, display_name, tenant, external_value, role),
+            (email.lower(), password_hash, display_name, tenant, tenant_id, role),
         )
         conn.commit()
 

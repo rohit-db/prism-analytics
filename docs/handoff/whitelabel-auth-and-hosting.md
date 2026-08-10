@@ -261,7 +261,7 @@ differ in *where the app runs* and *where the login lives*. **The auth code
 |---|---|---|
 | App runtime | Databricks Apps platform | Your container (EC2 / ECS / any Docker) |
 | Custom login lives in | Separate `edge/` reverse-proxy service | In-process `server/auth/` |
-| Embedding | Basic embedding behind the proxy | SP-minted scoped embed tokens |
+| Embedding | SP-minted scoped embed tokens | SP-minted scoped embed tokens |
 | Front door | The edge proxy (injects an SP bearer to clear the Apps OAuth proxy) | The app itself |
 | Shipped here? | **Yes** — `edge/`, see [the edge README](../../edge/README.md) | **Yes** |
 
@@ -269,18 +269,31 @@ Both are present. `server/auth/` was originally **ported from the edge gateway**
 (its docstrings still reference `edge/auth.py`, `edge/db.py`), and the gateway
 itself now lives alongside it again.
 
-> **Which one is running?** They are mutually exclusive in practice, and the
-> switch is `AUTH_ENABLED`. Behind the edge, leave it unset so the app has no
-> login of its own and the edge is the only place a user signs in; the deployed
-> `app.yaml` does exactly that. Self-hosting the whole app instead, set it true
-> and skip the edge.
+> **Which one is running?** `AUTH_ENABLED` must be **true either way** — it is
+> what makes the app verify sessions and row-scope per tenant. What differs is
+> *who mints* the session: the edge under Model A, the app's own `/login` under
+> Model B. The difference the user sees is only which login page they land on,
+> so behind the edge you also want `AUTH_SHOW_DEMO_LOGINS` off on the app side.
 >
-> **Known gap in Model A.** The edge forwards its authenticated identity as
-> `X-Apex-Viewer` / `X-Apex-Tenant` / `X-Apex-External-Value`, but nothing in
-> `server/` reads those headers yet. With the session gate off, every user
-> behind the edge is served as the app Service Principal, so per-tenant row
-> filtering does not apply. Closing this means teaching
-> `SessionGateMiddleware` to trust a signed identity header from the edge.
+> **Do not leave `AUTH_ENABLED` unset behind the edge.** With the session gate
+> off, the app ignores the edge's session, `resolve_tenant_sp()` returns None for
+> everyone, and every user is served as the app SP — no row filtering, and the
+> avatar greets each tenant as the service principal. That was the original
+> Model A gap; it is closed, and `AUTH_ENABLED: "true"` in `app.yaml` is what
+> keeps it closed.
+
+**How the identity crosses the boundary (Model A).** The edge's SP bearer clears
+the Apps OAuth proxy but carries no user identity. So the edge mints *the app's
+own* signed session cookie (`edge/appsession.py`) and injects it per-request
+(`edge/proxy.py`), stripping any client-supplied one first. Both processes share
+`AUTH_SESSION_SECRET` and `AUTH_SESSION_COOKIE` and deliberately share no code,
+which makes the cookie a wire contract — pinned by `tests/test_edge_identity.py`.
+
+**Both SPs need CAN_RUN on the assets.** Each tenant SP, *and* the app SP as the
+resolver's fall-back identity (operator `tenant_id="*"`). Missing the app-SP
+grant surfaces as `RESOURCE_DOES_NOT_EXIST` on the operator's embed, because
+Databricks reports an unreadable dashboard as missing rather than forbidden.
+`scripts/tenants/grant_resource_access.py` grants all of them, idempotently.
 
 ### How the SP identity powers all Databricks calls off-platform
 

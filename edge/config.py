@@ -7,10 +7,17 @@ see ``edge/.env.example``). The edge needs three things to do its job:
   2. The workspace OIDC endpoint to mint at    (EDGE_WORKSPACE_HOST)
   3. The edge SP credentials                   (EDGE_SP_CLIENT_ID / _SECRET)
 
+To hand the signed-in identity to the app (so per-tenant row scoping works
+rather than everyone being served as the app SP), the edge also needs the app's
+session-signing contract:
+
+  4. The app's session secret / cookie name    (AUTH_SESSION_SECRET,
+                                                 AUTH_SESSION_COOKIE)
+
 Optionally, to also front the AI/BI dashboard origin so basic-embedding
 iframes route through the edge instead of hitting the workspace directly:
 
-  4. The workspace embed origin                (EDGE_EMBED_ORIGIN, default =
+  5. The workspace embed origin                (EDGE_EMBED_ORIGIN, default =
                                                  EDGE_WORKSPACE_HOST)
 
 Everything else has a sensible default tuned for local http testing.
@@ -25,8 +32,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-def load_env_file(filepath: str) -> None:
-    """Minimal .env loader — no extra deps."""
+def load_env_file(filepath: str, only: tuple[str, ...] | None = None) -> None:
+    """Minimal .env loader — no extra deps.
+
+    Never overwrites a value already in the environment. Pass ``only`` to import
+    just a named subset of keys.
+    """
     p = Path(filepath)
     if not p.exists():
         return
@@ -36,12 +47,24 @@ def load_env_file(filepath: str) -> None:
             continue
         key, _, value = line.partition("=")
         key, value = key.strip(), value.strip().strip('"').strip("'")
+        if only is not None and key not in only:
+            continue
         if key and value and key not in os.environ:
             os.environ[key] = value
 
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 load_env_file(str(_REPO_ROOT / "edge" / ".env"))
+# Local-dev convenience: fall back to the app's .env for the shared session
+# contract *only*. load_env_file never overwrites an existing value, so edge/.env
+# and a real deployment's environment both still win. This exists because a
+# mismatched AUTH_SESSION_SECRET fails *silently* — the app ignores the identity
+# and serves the app SP — which is a miserable bug to chase when both processes
+# are running on the same machine.
+load_env_file(
+    str(_REPO_ROOT / ".env"),
+    only=("AUTH_SESSION_SECRET", "AUTH_SESSION_COOKIE", "AUTH_SESSION_TTL_SECONDS"),
+)
 
 
 def _env(name: str, default: str = "") -> str:
@@ -81,6 +104,16 @@ class EdgeConfig:
     # Secret used to sign the edge's own session cookie (custom auth). Override
     # in production via EDGE_SESSION_SECRET.
     session_secret: str
+    # --- identity handoff to the app ---
+    # The app's session-cookie contract. After a user signs in at the edge we
+    # mint a cookie in *the app's* format, signed with *the app's* secret, and
+    # inject it on the upstream request. The app then verifies it with its own
+    # verify_session() and resolves the tenant SP — no bespoke trust path, and
+    # the token is never exposed to the browser. These MUST match the app's
+    # AUTH_SESSION_SECRET / AUTH_SESSION_COOKIE / AUTH_SESSION_TTL_SECONDS.
+    app_session_secret: str
+    app_session_cookie: str
+    app_session_ttl: int
     # --- Lakebase (custom user directory) ---
     # When enabled, the edge reads its login users from a Lakebase Postgres
     # instance instead of the in-code fallback list. The edge mints a Postgres
@@ -112,6 +145,9 @@ class EdgeConfig:
             "EDGE_WORKSPACE_HOST": self.workspace_host,
             "EDGE_SP_CLIENT_ID": self.sp_client_id,
             "EDGE_SP_CLIENT_SECRET": self.sp_client_secret,
+            # Without this the app cannot tell tenants apart and silently serves
+            # everyone as the app SP — surface it as loudly as a missing bearer.
+            "AUTH_SESSION_SECRET": self.app_session_secret,
         }
         return [k for k, v in required.items() if not v]
 
@@ -127,6 +163,9 @@ CONFIG = EdgeConfig(
     rewrite_secure_cookies=_bool("EDGE_REWRITE_SECURE_COOKIES", True),
     oauth_scope=_env("EDGE_OAUTH_SCOPE", "all-apis"),
     session_secret=_env("EDGE_SESSION_SECRET", "apex-edge-dev-secret-change-me"),
+    app_session_secret=_env("AUTH_SESSION_SECRET"),
+    app_session_cookie=_env("AUTH_SESSION_COOKIE", "prism_session"),
+    app_session_ttl=int(_env("AUTH_SESSION_TTL_SECONDS", "28800")),
     lakebase_enabled=_bool("EDGE_LAKEBASE_ENABLED", False),
     pg_host=_env("EDGE_PG_HOST"),
     pg_database=_env("EDGE_PG_DATABASE", "databricks_postgres"),

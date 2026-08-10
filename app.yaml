@@ -22,15 +22,68 @@ env:
   - name: GENIE_MCP_POLL_MAX_ATTEMPTS
     value: "120"
 
-  # AUTH_ENABLED is deliberately unset: behind the edge gateway the branded
-  # login lives outside this app, so the in-process session gate stays off and
-  # the edge is the only place a user signs in.
+  # --- white-label session gate -------------------------------------------
+  # ON so the app reads the identity the edge gateway hands it. With this off
+  # the app cannot tell tenants apart and serves everyone as the app SP, which
+  # silently defeats the Unity Catalog row filter.
+  - name: AUTH_ENABLED
+    value: "true"
+  # Must match the edge's AUTH_SESSION_SECRET — see scripts/deploy/sync_app_secrets.py.
+  - name: AUTH_SESSION_SECRET
+    valueFrom: auth-session-secret
+  # Pinned rather than left to the default: the edge injects this exact cookie
+  # name, and a mismatch is invisible (the app just sees no session).
+  - name: AUTH_SESSION_COOKIE
+    value: "prism_session"
+
+  # --- Lakebase (user directory + tenant registry) -------------------------
+  # PGHOST/PGPORT/PGDATABASE/PGSSLMODE are injected by the `lakebase` resource
+  # below; PGUSER defaults to the app SP's injected DATABRICKS_CLIENT_ID.
+  - name: LAKEBASE_ENABLED
+    value: "true"
+  - name: LAKEBASE_INSTANCE_NAME
+    value: "prism-edge"
+  - name: LAKEBASE_ENDPOINT_PATH
+    value: "projects/prism-edge/branches/production/endpoints/primary"
+
+  # --- per-tenant Service Principal isolation ------------------------------
+  # Decrypts tenant SP secrets stored in Lakebase. Rotating this orphans every
+  # stored credential, so treat it as write-once.
+  - name: AES_KEY_BASE64
+    valueFrom: aes-key-base64
+  - name: UC_CATALOG
+    value: "serverless_stable_71zsua_catalog"
+  - name: UC_SCHEMA
+    value: "prism_travel"
+  - name: VERIFY_TABLE
+    value: "serverless_stable_71zsua_catalog.prism_travel.summarydataset"
+  # The governed fact table names its tenant column `client_id`, not the default
+  # `tenant_id`. The mapping table (sp_tenant_mapping) does use the defaults.
+  - name: TENANT_COLUMN
+    value: "client_id"
+  - name: TENANT_LABEL_COLUMN
+    value: "client_name"
 
 resources:
   - name: sql-warehouse
     sql_warehouse:
       id: "28bc4299a384d531"
       permission: CAN_USE
+  - name: lakebase
+    database:
+      instance_name: "prism-edge"
+      database_name: "databricks_postgres"
+      permission: CAN_CONNECT_AND_CREATE
+  - name: auth-session-secret
+    secret:
+      scope: "prism"
+      key: "auth-session-secret"
+      permission: READ
+  - name: aes-key-base64
+    secret:
+      scope: "prism"
+      key: "aes-key-base64"
+      permission: READ
 
 user_api_scopes:
   - sql

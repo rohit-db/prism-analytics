@@ -19,7 +19,7 @@ def main() -> None:
     rows = users.list_all()
     print(f"Seeded {n} users; directory now has {len(rows)}:")
     for r in rows:
-        print(f"  - {r.email:28} {r.tenant:16} external_value={r.external_value} role={r.role}")
+        print(f"  - {r.email:28} {r.tenant:16} tenant_id={r.tenant_id} role={r.role}")
 
 
 if __name__ == "__main__":
