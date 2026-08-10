@@ -257,21 +257,30 @@ Both put a branded, no-SSO login in front of Databricks-hosted analytics; they
 differ in *where the app runs* and *where the login lives*. **The auth code
 (`server/auth/`) is identical either way.**
 
-| | **Edge-gateway (Model A)** | **External-host (Model B) — this branch** |
+| | **Edge-gateway (Model A)** | **External-host (Model B)** |
 |---|---|---|
 | App runtime | Databricks Apps platform | Your container (EC2 / ECS / any Docker) |
 | Custom login lives in | Separate `edge/` reverse-proxy service | In-process `server/auth/` |
 | Embedding | Basic embedding behind the proxy | SP-minted scoped embed tokens |
 | Front door | The edge proxy (injects an SP bearer to clear the Apps OAuth proxy) | The app itself |
-| Shipped here? | No (conceptual / prior demo) | **Yes** |
+| Shipped here? | **Yes** — `edge/`, see [the edge README](../../edge/README.md) | **Yes** |
 
-The shipped auth modules were **ported from the earlier edge gateway** (their
-docstrings reference `edge/auth.py`, `edge/db.py`, etc.).
+Both are present. `server/auth/` was originally **ported from the edge gateway**
+(its docstrings still reference `edge/auth.py`, `edge/db.py`), and the gateway
+itself now lives alongside it again.
 
-> **Verification note.** `git ls-files` shows **no `edge/` or `app-appkit` paths
-> tracked in this branch.** Those docstring references describe the *historical
-> source* of the ported code, not files present here. (`.dockerignore` lists
-> `edge/.env` / `app-appkit` as defensive excludes, not evidence they exist.)
+> **Which one is running?** They are mutually exclusive in practice, and the
+> switch is `AUTH_ENABLED`. Behind the edge, leave it unset so the app has no
+> login of its own and the edge is the only place a user signs in; the deployed
+> `app.yaml` does exactly that. Self-hosting the whole app instead, set it true
+> and skip the edge.
+>
+> **Known gap in Model A.** The edge forwards its authenticated identity as
+> `X-Apex-Viewer` / `X-Apex-Tenant` / `X-Apex-External-Value`, but nothing in
+> `server/` reads those headers yet. With the session gate off, every user
+> behind the edge is served as the app Service Principal, so per-tenant row
+> filtering does not apply. Closing this means teaching
+> `SessionGateMiddleware` to trust a signed identity header from the edge.
 
 ### How the SP identity powers all Databricks calls off-platform
 
@@ -383,7 +392,4 @@ Authoritative against `.env.example`, `server/config.py`, `server/lakebase.py`,
 | `server/tenants/resolver.py` | `tenant_id` → tenant SP (the isolation hand-off). |
 | `app.py` | FastAPI entry: adds middleware, wires routers, serves `frontend/dist`. |
 | `Dockerfile` / `docker-compose.yml` / `.dockerignore` / `.env.example` | Container packaging + env contract. |
-
-> **Not in this branch:** there are **no `edge/` or `app-appkit` paths** tracked
-> here. References to `edge/*` in docstrings describe the historical source of the
-> ported code, not files in this repo.
+| `edge/` | The Model A front door: its own login, session and reverse proxy. Runs as a separate process, imports nothing from `server/`. |

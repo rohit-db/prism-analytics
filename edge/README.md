@@ -1,14 +1,19 @@
-# APEX Edge Gateway (front door)
+# Prism Edge Gateway (front door)
 
-A localhost **front-door gateway** that lets the APEX app stay hosted on
+A localhost **front-door gateway** that lets the Prism app stay hosted on
 Databricks while external users reach it **without ever seeing Databricks
 SSO**. This is the "Firefly" / OEM-analytics pattern from
 [Building a Customer-Facing OEM Analytics App on Databricks](https://medium.com/@rohitbhagwat/building-a-customer-facing-oem-analytics-app-on-databricks-2233f89efc66).
 
 ```
- end user ──http──▶ localhost:9000 (edge)  ──https + edge-SP bearer──▶  advito-ai-bi (Databricks App)
+ end user ──http──▶ localhost:9000 (edge)  ──https + edge-SP bearer──▶  prism-analytics (Databricks App)
                        front door                                        behind Apps OAuth proxy
 ```
+
+> **Identity stops at the edge today.** The proxy forwards the signed-in user as
+> `X-Apex-Viewer` / `X-Apex-Tenant` / `X-Apex-External-Value`, but `server/`
+> does not read those headers yet, so every user behind the edge is served as
+> the app Service Principal and per-tenant row filtering does not apply.
 
 The edge is a thin, transparent reverse proxy. For every request it injects an
 **edge Service Principal** OAuth token as `Authorization: Bearer …`, which is
@@ -43,12 +48,12 @@ Demo sample logins (seeded into Lakebase; shown on the login page, click to fill
 
 ```bash
 # 1) create the Lakebase Autoscaling project
-databricks postgres create-project apex-edge \
-  --json '{"spec": {"display_name": "APEX Edge Auth"}}' -p bcd-customer
+databricks postgres create-project prism-edge \
+  --json '{"spec": {"display_name": "Prism Edge Auth"}}' -p fevm-stable-71zsua
 
 # 2) get the endpoint host -> EDGE_PG_HOST in edge/.env
 databricks postgres get-endpoint \
-  projects/apex-edge/branches/production/endpoints/primary -p bcd-customer
+  projects/prism-edge/branches/production/endpoints/primary -p fevm-stable-71zsua
 
 # 3) fill EDGE_PG_* in edge/.env (see edge/.env.example), then seed users
 python -m edge.seed_users
@@ -70,19 +75,23 @@ and `lakebase_ok` so you can confirm the directory is live.
 cp edge/.env.example edge/.env
 
 # 1) Create the edge SP + secret (writes them into edge/.env)
-python edge/create_edge_sp.py --profile bcd-customer \
-    --display-name apex-edge --app-name advito-ai-bi
+python edge/create_edge_sp.py --profile fevm-stable-71zsua \
+    --display-name prism-edge --app-name prism-analytics
 
 # 2) Grant the edge SP CAN_USE on the app (command printed by step 1)
-databricks apps update-permissions advito-ai-bi -p bcd-customer \
+databricks apps update-permissions prism-analytics -p fevm-stable-71zsua \
     --json '{"access_control_list":[{"service_principal_name":"<edge-sp-id>","permission_level":"CAN_USE"}]}'
 
-# 3) Prove the edge SP token clears the Apps OAuth proxy
-python edge/smoke.py        # expect: "with bearer -> ok (status 200)"
+# 3) Prove the edge SP token clears the Apps OAuth proxy.
+#    Run as a module — as a script the repo root is not on sys.path.
+python -m edge.smoke        # expect: "with bearer -> ok (status 200)"
 
 # 4) Run the front door, then open http://localhost:9000
 ./edge/run.sh
 ```
+
+Sign in with any of the fallback logins (`alice@cloudventure.com`,
+`ben@nike.com`, `dana@advito.com`), password `apex`.
 
 `GET http://localhost:9000/__edge/health` reports config + whether the edge SP
 token is mintable, without touching upstream.
