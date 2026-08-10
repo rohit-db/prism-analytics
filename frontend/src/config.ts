@@ -586,7 +586,9 @@ export function buildRoutes(registry: RegistryLike): RouteConfig[] {
       label: spec.label,
       icon: spec.nav!.icon,
       section: spec.nav!.section,
-      mode: "custom" as const,
+      // A nav-only asset renders the "coming soon" stub instead of an embed, so a
+      // deployment can show its full intended nav before every dashboard exists.
+      mode: spec.nav!.placeholder ? ("placeholder" as const) : ("custom" as const),
       dashboard: key,
       order: spec.nav!.order,
     }));

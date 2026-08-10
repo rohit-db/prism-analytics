@@ -24,6 +24,12 @@ export interface AssetNav {
   icon: string;                          // key into config.ts ICON_MAP
   section: "insights" | "exploration";   // which sidebar group
   order: number;                         // sort within the section
+  /**
+   * Render a "coming soon" stub instead of an embedded dashboard. Lets a deployment
+   * show its full intended nav (icons + labels) before every dashboard exists —
+   * per-instance, since the registry is per-instance.
+   */
+  placeholder?: boolean;
 }
 
 export interface AssetSpec {
