@@ -2,31 +2,40 @@ from fastapi.testclient import TestClient
 
 from server.assets import registry as assets
 
+# The seed carries deployment config: its dashboard id and page ids change every
+# time the app is pointed at a new workspace. Read the expected id from the seed
+# rather than freezing a literal, so these tests keep asserting the wiring
+# (dedup, defaulting, catalog shape) instead of failing on a retarget.
+_SEED_ASSETS = assets.load_registry()["assets"]
+SEED_DASHBOARD_ID = _SEED_ASSETS["spend"]["dashboardId"]
+
 
 def test_load_registry_has_seed_assets():
     reg = assets.load_registry()
     a = reg["assets"]
     assert "spend" in a and "sustainability" in a
     assert a["spend"]["label"] == "Spend"
-    assert a["spend"]["dashboardId"] == "01f1271698161d42b3c66528415775e8"
+    assert a["spend"]["dashboardId"]
     # per-page Genie prompts moved off ROUTES into the seed
-    spend_summary = next(p for p in a["spend"]["pages"] if p["pageId"] == "summary")
-    assert "SPEND" in spend_summary["summaryPrompt"].upper()
-    assert len(spend_summary["suggestions"]) == 3
+    for page in a["spend"]["pages"]:
+        assert page["summaryPrompt"].strip()
+        assert len(page["suggestions"]) == 3
+    assert "SPEND" in a["spend"]["pages"][0]["summaryPrompt"].upper()
 
 
 def test_dashboard_ids_are_deduped():
     # spend + sustainability share one physical dashboard id -> one entry
-    assert assets.dashboard_ids() == ["01f1271698161d42b3c66528415775e8"]
+    assert _SEED_ASSETS["sustainability"]["dashboardId"] == SEED_DASHBOARD_ID
+    assert assets.dashboard_ids() == [SEED_DASHBOARD_ID]
 
 
 def test_default_dashboard_id():
-    assert assets.default_dashboard_id() == "01f1271698161d42b3c66528415775e8"
+    assert assets.default_dashboard_id() == SEED_DASHBOARD_ID
 
 
 def test_catalog_dashboards_shape():
     cat = assets.catalog_dashboards()
-    assert cat == [{"id": "01f1271698161d42b3c66528415775e8", "name": "Spend"}]
+    assert cat == [{"id": SEED_DASHBOARD_ID, "name": "Spend"}]
 
 
 def test_load_registry_failsoft_on_missing_file(monkeypatch, tmp_path):
@@ -58,7 +67,7 @@ def test_get_api_assets_returns_registry(monkeypatch):
     assert res.status_code == 200
     body = res.json()
     assert "spend" in body["assets"]
-    assert body["assets"]["spend"]["dashboardId"] == "01f1271698161d42b3c66528415775e8"
+    assert body["assets"]["spend"]["dashboardId"] == SEED_DASHBOARD_ID
 
 
 def test_get_api_assets_filters_by_tenant_entitlement(monkeypatch):
