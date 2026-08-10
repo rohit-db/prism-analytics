@@ -1,0 +1,7 @@
+# Edge front-door gateway dependencies (runs as its own local process).
+fastapi>=0.110
+uvicorn[standard]>=0.27
+httpx>=0.27
+# Lakebase (managed Postgres) user directory + OAuth credential minting.
+psycopg[binary]>=3.1
+databricks-sdk>=0.81
