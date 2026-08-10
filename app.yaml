@@ -10,11 +10,11 @@ command:
 
 env:
   - name: DASHBOARD_URL
-    value: "https://dbc-1e27e56a-90cd.cloud.databricks.com/embed/dashboardsv3/01f1271698161d42b3c66528415775e8?o=1048934788948873"
+    value: "https://fevm-serverless-stable-71zsua.cloud.databricks.com/embed/dashboardsv3/01f18f35b8561fb79677c244188f4c16?o=7474654199269365"
   - name: MULTI_PAGE_DASHBOARD_URL
-    value: "https://dbc-1e27e56a-90cd.cloud.databricks.com/embed/dashboardsv3/01f1271698161d42b3c66528415775e8?o=1048934788948873"
+    value: "https://fevm-serverless-stable-71zsua.cloud.databricks.com/embed/dashboardsv3/01f18f35b8561fb79677c244188f4c16?o=7474654199269365"
   - name: GENIE_SPACE_ID
-    value: "01f127092d2219f3be10180d79b2ee5d"
+    value: "01f18f363d9e193495d201f4b836151d"
 
   # Managed Genie MCP server polling (Genie agent turns take ~70-260s).
   - name: GENIE_MCP_POLL_INTERVAL_MS
@@ -22,10 +22,14 @@ env:
   - name: GENIE_MCP_POLL_MAX_ATTEMPTS
     value: "120"
 
+  # AUTH_ENABLED is deliberately unset: behind the edge gateway the branded
+  # login lives outside this app, so the in-process session gate stays off and
+  # the edge is the only place a user signs in.
+
 resources:
   - name: sql-warehouse
     sql_warehouse:
-      id: "5cd3a4956df6152f"
+      id: "28bc4299a384d531"
       permission: CAN_USE
 
 user_api_scopes:

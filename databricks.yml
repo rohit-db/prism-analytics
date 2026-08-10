@@ -13,6 +13,54 @@ variables:
     default: "5cd3a4956df6152f"
 
 targets:
+  # The live demo target: the FEVM workspace holding the Prism Travel
+  # Intelligence dashboard and Genie space (see .databricks-resources.json).
+  fevm:
+    default: true
+    workspace:
+      host: https://fevm-serverless-stable-71zsua.cloud.databricks.com
+      profile: fevm-stable-71zsua
+    variables:
+      catalog: "serverless_stable_71zsua_catalog"
+      schema: "prism_travel"
+      warehouse_id: "28bc4299a384d531"
+    resources:
+      apps:
+        prism-analytics:
+          name: prism-analytics
+          source_code_path: /Workspace/Users/rohit.bhagwat@databricks.com/prism-analytics
+          config:
+            command:
+              - "python"
+              - "-m"
+              - "uvicorn"
+              - "app:app"
+              - "--host"
+              - "0.0.0.0"
+              - "--port"
+              - "8000"
+            env:
+              - name: DASHBOARD_URL
+                value: "https://fevm-serverless-stable-71zsua.cloud.databricks.com/embed/dashboardsv3/01f18f35b8561fb79677c244188f4c16?o=7474654199269365"
+              - name: MULTI_PAGE_DASHBOARD_URL
+                value: "https://fevm-serverless-stable-71zsua.cloud.databricks.com/embed/dashboardsv3/01f18f35b8561fb79677c244188f4c16?o=7474654199269365"
+              - name: GENIE_SPACE_ID
+                value: "01f18f363d9e193495d201f4b836151d"
+              - name: GENIE_MCP_POLL_INTERVAL_MS
+                value: "3000"
+              - name: GENIE_MCP_POLL_MAX_ATTEMPTS
+                value: "120"
+          resources:
+            - name: sql-warehouse
+              sql_warehouse:
+                id: "28bc4299a384d531"
+                permission: CAN_USE
+          user_api_scopes:
+            - sql
+            - genie
+
+  # The original BCD customer POC workspace. Kept for reference; the demo
+  # assets it points at live in a workspace we no longer deploy to.
   bcd:
     workspace:
       host: https://dbc-1e27e56a-90cd.cloud.databricks.com
