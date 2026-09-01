@@ -13,6 +13,11 @@ the fictional corporate customer shown in the demo. Prism provides Acme with a s
 white-label embedded experience that unifies its data, helps nontechnical travel managers
 understand it, and turns a governed finding into a decision-ready action plan.
 
+The product story is explicit: Databricks is the governed data-and-AI solution, Databricks
+Apps is the interface through which the travel management company delivers Prism, and the
+Genie ontology provides the travel-domain semantics behind reliable natural-language
+analysis.
+
 The companion blog will use the same problem, evidence, and outcome so the recording and
 article reinforce one another.
 
@@ -24,12 +29,14 @@ product demonstration.
 1. A travel management company wants to give many corporate customers useful insights, but
    their travel data is fragmented across air, hotel, rail, car, rideshare, supplier, spend,
    and emissions systems.
-2. Prism Analytics lets the travel management company offer each customer its own branded,
-   embedded experience. The demo enters Acme Travel's experience; a per-tenant Service
+2. Databricks provides the governed data, analytics, AI, and isolation foundation. Prism,
+   delivered through Databricks Apps, lets the travel management company offer each customer
+   its own branded interface. The demo enters Acme Travel's experience; a per-tenant Service
    Principal and Unity Catalog row filter ensure Acme sees only Acme data.
 3. Acme's governed KPIs reveal rising spend and emissions.
-4. The embedded Spend dashboard identifies the main driver.
-5. Ask Prism explains that driver in plain language for a nontechnical travel manager.
+4. The embedded AI/BI Spend dashboard identifies the main driver.
+5. Ask Prism uses Genie and its travel-domain ontology to interpret business language,
+   select governed measures, and explain the driver for a nontechnical travel manager.
 6. An Opportunity Brief converts the finding into a recommended action and modeled impact.
 
 Multi-tenancy is established as part of the business premise, not introduced later as an
@@ -91,6 +98,26 @@ The preferred Ask Prism question will ask what is driving Acme's increase and wh
 the travel manager should take. The answer must cite governed figures and distinguish cost
 actions from emissions actions.
 
+## Genie Ontology
+
+The Genie configuration will encode the business meaning required by the story rather than
+relying on table and column names alone. Its ontology will define:
+
+- corporate-travel concepts such as component, trip, traveler, travel sector, advance
+  booking, online adoption, and intercontinental Air spend;
+- measure definitions and units for spend, emissions, rates, addressable spend, and modeled
+  savings;
+- synonyms a travel manager is likely to use, including late booking, short lead time,
+  advance purchase, leakage to offline channels, and carbon impact;
+- the relationship between destination, route, class, booking channel, and lead-time band;
+- the instruction that the 12% savings value is a modeled scenario, not guaranteed savings;
+- example questions and verified queries that reproduce the Acme narrative.
+
+This ontology is the semantic layer behind Ask Prism and the Opportunity Brief. The script
+will explain it in plain language: Genie understands the travel business vocabulary and maps
+questions to governed data. It will not present the ontology as a separate user interface
+or imply that the language model is reasoning without governed definitions.
+
 ## Opportunity Brief
 
 The existing Executive Summary flow will be evolved into a decision-oriented Opportunity
@@ -116,8 +143,8 @@ and a recovery note for slow Genie responses. Target timing:
 
 - 0:00–0:25 — a travel management company serving many corporate customers, each with
   fragmented travel data;
-- 0:25–0:45 — Prism's per-customer white-label, embedded, governed experience, entering
-  Acme Travel as the example tenant;
+- 0:25–0:45 — Databricks as the solution and Prism on Databricks Apps as the per-customer
+  white-label interface, entering Acme Travel as the example tenant;
 - 0:45–1:25 — Acme KPI overview;
 - 1:25–2:15 — embedded dashboard discovery;
 - 2:15–3:05 — Ask Prism explanation;
@@ -137,6 +164,8 @@ Expected implementation surfaces:
   governed dimensions and measures;
 - `scripts/fevm/travel_dashboard.json` — story-aligned dashboard widgets;
 - `scripts/fevm/travel_genie_space.json` — instructions and sample questions;
+- Genie ontology configuration — travel terms, synonyms, governed measures, relationships,
+  and verified example queries used by Ask Prism and the Opportunity Brief;
 - `server/assets/dashboards.seed.json` — page prompt and suggestions;
 - `frontend/src/components/ExecutiveSummaryModal.tsx` and prompt construction — Opportunity
   Brief presentation and copy action;
@@ -164,6 +193,8 @@ Validation will cover:
 - deterministic regeneration and expected Acme-only trend;
 - no equivalent injected spike for other tenants;
 - agreement among fact-table queries, metric-view measures, dashboard values, and Genie;
+- ontology tests with representative business-language questions and verified expected
+  measures, filters, and units;
 - explicit checks for spend growth, destination concentration, late-booking rate,
   addressable spend, modeled savings, and business-class emissions share;
 - existing asset-registry and tenant-isolation tests;
@@ -178,5 +209,6 @@ The work is complete when a viewer can follow one consistent Acme story from KPI
 dashboard to natural-language explanation to Opportunity Brief in under four minutes; every
 spoken number is reproducible from governed synthetic data; Prism is clearly presented as a
 secure multi-tenant, white-label embedded experience for a travel management company and its
-corporate customers; and the blog outline tells the same story without depending on
-unsupported product claims.
+corporate customers; Databricks, Databricks Apps, and the Genie ontology each have a clear
+and accurate role in the story; and the blog outline tells the same story without depending
+on unsupported product claims.
