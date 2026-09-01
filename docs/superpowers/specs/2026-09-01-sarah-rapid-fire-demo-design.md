@@ -6,9 +6,11 @@
 
 ## Goal
 
-Create a three-to-four-minute, single-browser-tab demonstration of Prism Analytics using
-the fictional Acme Travel tenant. The demo will show how a secure white-label embedded
-experience unifies fragmented corporate-travel data, helps nontechnical travel managers
+Create a three-to-four-minute, single-browser-tab demonstration of Prism Analytics. The
+story begins with a travel management company that wants to offer every corporate customer
+useful insights from fragmented travel data through its own branded product. Acme Travel is
+the fictional corporate customer shown in the demo. Prism provides Acme with a secure,
+white-label embedded experience that unifies its data, helps nontechnical travel managers
 understand it, and turns a governed finding into a decision-ready action plan.
 
 The companion blog will use the same problem, evidence, and outcome so the recording and
@@ -19,17 +21,21 @@ article reinforce one another.
 The video follows Sarah's requested structure: problem, generic solution, and high-level
 product demonstration.
 
-1. Corporate-travel data is fragmented across air, hotel, rail, car, rideshare, suppliers,
-   spend, and emissions systems.
-2. Prism Analytics embeds Databricks AI/BI and Genie inside Acme's own branded experience,
-   while a per-tenant Service Principal and Unity Catalog row filter enforce isolation.
+1. A travel management company wants to give many corporate customers useful insights, but
+   their travel data is fragmented across air, hotel, rail, car, rideshare, supplier, spend,
+   and emissions systems.
+2. Prism Analytics lets the travel management company offer each customer its own branded,
+   embedded experience. The demo enters Acme Travel's experience; a per-tenant Service
+   Principal and Unity Catalog row filter ensure Acme sees only Acme data.
 3. Acme's governed KPIs reveal rising spend and emissions.
 4. The embedded Spend dashboard identifies the main driver.
 5. Ask Prism explains that driver in plain language for a nontechnical travel manager.
 6. An Opportunity Brief converts the finding into a recommended action and modeled impact.
 
-The security and white-label architecture receives a short introduction rather than a
-technical walkthrough. The business problem and user experience remain the focus.
+Multi-tenancy is established as part of the business premise, not introduced later as an
+architecture feature. The security and white-label implementation still receives only a
+short explanation rather than a technical walkthrough. The business problem and user
+experience remain the focus.
 
 ## Anchored Acme Data Story
 
@@ -108,8 +114,10 @@ to create campaigns, modify travel policy, or write into an external operational
 The timed script will include exact clicks, narration, expected evidence, transition lines,
 and a recovery note for slow Genie responses. Target timing:
 
-- 0:00–0:25 — fragmented-data problem;
-- 0:25–0:45 — Prism white-label, embedded, governed introduction;
+- 0:00–0:25 — a travel management company serving many corporate customers, each with
+  fragmented travel data;
+- 0:25–0:45 — Prism's per-customer white-label, embedded, governed experience, entering
+  Acme Travel as the example tenant;
 - 0:45–1:25 — Acme KPI overview;
 - 1:25–2:15 — embedded dashboard discovery;
 - 2:15–3:05 — Ask Prism explanation;
@@ -169,5 +177,6 @@ Validation will cover:
 The work is complete when a viewer can follow one consistent Acme story from KPI to
 dashboard to natural-language explanation to Opportunity Brief in under four minutes; every
 spoken number is reproducible from governed synthetic data; Prism is clearly presented as a
-secure white-label embedded experience; and the blog outline tells the same story without
-depending on unsupported product claims.
+secure multi-tenant, white-label embedded experience for a travel management company and its
+corporate customers; and the blog outline tells the same story without depending on
+unsupported product claims.
