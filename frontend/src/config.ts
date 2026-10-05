@@ -191,12 +191,19 @@ export const FILTERS: Record<FilterKey, FilterDef> = {
 // AssetSpec (types.ts); App maps it to DashboardSpec via toEmbedSpec() so the
 // helper signatures don't change.
 
+// AI/BI embed config: how the dashboard's native global-filter panel behaves.
+// Mirrors @databricks/aibi-client's GlobalFilterVisibility (SDK ≥ 1.2.0).
+// `disabled` hides the panel + its toggle button entirely but still honors
+// filter values pushed via the embed URL — i.e. the host FilterBar keeps working.
+export type GlobalFilterVisibility = "hiddenByDefault" | "shownByDefault" | "disabled";
+
 export interface DashboardSpec {
   id: string;                                   // Lakeview dashboard id
   globalFilterPage: string;                     // "Global Filters" page id
   filters: Partial<Record<FilterKey, string>>;  // FilterKey → widget id
   workspace?: string;                           // optional per-dashboard workspace
   org?: string;                                 // optional per-dashboard org id
+  globalFilterVisibility?: GlobalFilterVisibility; // default "disabled" (host FilterBar is the only filter UI)
 }
 
 export function getSupportedFilterKeys(spec?: DashboardSpec): FilterKey[] {
