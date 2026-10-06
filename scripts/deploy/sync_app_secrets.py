@@ -34,9 +34,13 @@ _REPO = Path(__file__).resolve().parents[2]
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
-from dotenv import load_dotenv  # noqa: E402
+from dotenv import dotenv_values  # noqa: E402
 
-load_dotenv()
+# Read `.env` *without* exporting it. It also holds DATABRICKS_HOST and the app
+# SP's credentials, and the SDK ranks ambient environment above an explicit
+# `profile=` — so `load_dotenv()` here made `--profile` a lie, quietly writing
+# secrets into whatever workspace `.env` happened to point at.
+_DOTENV = dotenv_values(_REPO / ".env")
 
 DEFAULT_SCOPE = "prism"
 
@@ -73,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
 
     values = {}
     for env_name, key in SECRETS.items():
-        raw = (os.environ.get(env_name) or "").strip()
+        raw = (os.environ.get(env_name) or _DOTENV.get(env_name) or "").strip()
         if not raw:
             print(f"ERROR: {env_name} is not set in the environment or .env")
             return 2

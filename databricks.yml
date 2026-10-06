@@ -67,6 +67,107 @@ targets:
             - sql
             - genie
 
+  # A public workspace (no IP access lists — the tier cannot enable them), used to
+  # prove the edge gateway works from a host outside any corporate network. Its
+  # demo assets were rebuilt from the checked-in definitions with
+  # `scripts/deploy/provision_{dataset,dashboard,genie}.py`.
+  #
+  # This target carries an inline `config:` because app.yaml can only describe one
+  # workspace and is pinned to FEVM. Bundle variables do not reach app.yaml — it is
+  # synced verbatim as source — so a second live target has to restate the env here.
+  # Keep the two in step when either changes; that drift is a known sharp edge.
+  personal:
+    workspace:
+      host: https://dbc-76137765-4160.cloud.databricks.com
+      profile: personal
+    variables:
+      catalog: "workspace"
+      schema: "prism_travel"
+      warehouse_id: "a61dc0f47f22e89b"
+    resources:
+      apps:
+        prism-analytics:
+          name: prism-analytics
+          source_code_path: ${workspace.file_path}
+          config:
+            command:
+              - "python"
+              - "-m"
+              - "uvicorn"
+              - "app:app"
+              - "--host"
+              - "0.0.0.0"
+              - "--port"
+              - "8000"
+            env:
+              - name: DASHBOARD_URL
+                value: "https://dbc-76137765-4160.cloud.databricks.com/embed/dashboardsv3/01f194fe5579192e92d081ac7a3b3560?o=2684355705834325"
+              - name: MULTI_PAGE_DASHBOARD_URL
+                value: "https://dbc-76137765-4160.cloud.databricks.com/embed/dashboardsv3/01f194fe5579192e92d081ac7a3b3560?o=2684355705834325"
+              - name: GENIE_SPACE_ID
+                value: "01f194fe90541c1f876b68eeb238cc02"
+              # The canonical seed names the FEVM dashboard. This generated copy
+              # (see provision_dashboard.py --write-seed) points the same assets
+              # and Genie prompts at this workspace's dashboard instead.
+              - name: ASSETS_SEED_FILE
+                value: "server/assets/dashboards.personal.json"
+              - name: GENIE_MCP_POLL_INTERVAL_MS
+                value: "3000"
+              - name: GENIE_MCP_POLL_MAX_ATTEMPTS
+                value: "120"
+              - name: AUTH_ENABLED
+                value: "true"
+              # snake_case here on purpose: inside a bundle `config:` block the
+              # key is `value_from`. app.yaml's App-platform schema spells the
+              # same thing `valueFrom`, and the bundle silently *ignores* the
+              # camelCase spelling — the app would boot with an empty session
+              # secret and reject every edge login.
+              - name: AUTH_SESSION_SECRET
+                value_from: auth-session-secret
+              - name: AUTH_SESSION_COOKIE
+                value: "prism_session"
+              - name: LAKEBASE_ENABLED
+                value: "true"
+              - name: LAKEBASE_INSTANCE_NAME
+                value: "prism-edge"
+              - name: LAKEBASE_ENDPOINT_PATH
+                value: "projects/prism-edge/branches/production/endpoints/primary"
+              - name: AES_KEY_BASE64
+                value_from: aes-key-base64
+              - name: UC_CATALOG
+                value: "workspace"
+              - name: UC_SCHEMA
+                value: "prism_travel"
+              - name: VERIFY_TABLE
+                value: "workspace.prism_travel.summarydataset"
+              - name: TENANT_COLUMN
+                value: "client_id"
+              - name: TENANT_LABEL_COLUMN
+                value: "client_name"
+          resources:
+            - name: sql-warehouse
+              sql_warehouse:
+                id: "a61dc0f47f22e89b"
+                permission: CAN_USE
+            - name: lakebase
+              database:
+                instance_name: "prism-edge"
+                database_name: "databricks_postgres"
+                permission: CAN_CONNECT_AND_CREATE
+            - name: auth-session-secret
+              secret:
+                scope: "prism"
+                key: "auth-session-secret"
+                permission: READ
+            - name: aes-key-base64
+              secret:
+                scope: "prism"
+                key: "aes-key-base64"
+                permission: READ
+          user_api_scopes:
+            - sql
+            - genie
+
   # The original BCD customer POC workspace. Kept for reference; the demo assets
   # it points at live in a workspace we no longer deploy to. It still carries an
   # inline `config:` block because app.yaml is now FEVM-specific — deploying
