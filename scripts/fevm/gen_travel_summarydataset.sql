@@ -28,12 +28,21 @@ cat AS (
       WHEN u1 < 0.93 THEN 'Rail'
       ELSE 'Taxi/Rideshare'
     END AS category,
-    -- client by weight 40/30/20/10
+    -- client by weight across a 10-tenant book of business.
+    -- acme-travel + globex are the largest (the proven isolation demos); the last
+    -- two (blue-harbor, summit-mfg) carry data but are onboarded LIVE in the demo,
+    -- so they appear in the onboard picker as "not yet onboarded".
     CASE
-      WHEN u2 < 0.40 THEN 'acme-travel'
-      WHEN u2 < 0.70 THEN 'globex'
-      WHEN u2 < 0.90 THEN 'initech'
-      ELSE 'umbrella'
+      WHEN u2 < 0.18 THEN 'acme-travel'
+      WHEN u2 < 0.32 THEN 'globex'
+      WHEN u2 < 0.42 THEN 'initech'
+      WHEN u2 < 0.50 THEN 'umbrella'
+      WHEN u2 < 0.61 THEN 'meridian-health'
+      WHEN u2 < 0.71 THEN 'northwind-logistics'
+      WHEN u2 < 0.80 THEN 'vantage-pharma'
+      WHEN u2 < 0.88 THEN 'atlas-energy'
+      WHEN u2 < 0.95 THEN 'blue-harbor'
+      ELSE 'summit-mfg'
     END AS client_id
   FROM base b
 ),
@@ -118,7 +127,18 @@ SELECT
   'Business Unit'                                                  AS budget_field,
   elt(1 + CAST(u7*4 AS INT), 'Sales','Engineering','Operations','Marketing') AS budget_field_value,
 
-  CASE client_id WHEN 'acme-travel' THEN 'Acme Travel' WHEN 'globex' THEN 'Globex' WHEN 'initech' THEN 'Initech' ELSE 'Umbrella Corp' END AS client_name,
+  CASE client_id
+    WHEN 'acme-travel'         THEN 'Acme Travel'
+    WHEN 'globex'              THEN 'Globex'
+    WHEN 'initech'             THEN 'Initech'
+    WHEN 'umbrella'            THEN 'Umbrella Corp'
+    WHEN 'meridian-health'     THEN 'Meridian Health Systems'
+    WHEN 'northwind-logistics' THEN 'Northwind Logistics'
+    WHEN 'vantage-pharma'      THEN 'Vantage Pharmaceuticals'
+    WHEN 'atlas-energy'        THEN 'Atlas Energy'
+    WHEN 'blue-harbor'         THEN 'Blue Harbor Financial'
+    WHEN 'summit-mfg'          THEN 'Summit Manufacturing'
+  END AS client_name,
   client_id,
 
   -- ── spend (local currency) ───────────────────────────────────────────────

@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prism — Per-Tenant Isolation</title>
+<style>
+  /* ── DuBois-tuned tokens (light + dark) ─────────────────────────────── */
+  :root {
+    --primary: #2272b4;
+    --primary-weak: #e7f1fb;
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --muted: #eef0f3;
+    --fg: #1c1f23;
+    --fg-muted: #5a626c;
+    --border: #d7dbe0;
+    --border-strong: #b9bfc7;
+    --success: #277c43;
+    --success-weak: #e6f2ea;
+    --warning: #be501e;
+    --warning-weak: #fbeee6;
+    --destructive: #c82d4c;
+    --code-bg: #f0f2f5;
+    --radius: 4px;
+    --shadow: 0 1px 2px rgba(20,24,28,.06), 0 2px 8px rgba(20,24,28,.06);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --gradient: linear-gradient(100deg, #2272b4 0%, #7b5ea7 52%, #e8663d 100%);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --primary: #4299e0;
+      --primary-weak: #16283a;
+      --bg: #0f1216;
+      --card: #171b21;
+      --muted: #1e242c;
+      --fg: #e8eaed;
+      --fg-muted: #9aa3ad;
+      --border: #2a313a;
+      --border-strong: #3a424d;
+      --primary-weak: #14293d;
+      --success: #46b56a;
+      --success-weak: #12251a;
+      --warning: #e0864f;
+      --warning-weak: #2a1c12;
+      --destructive: #e86178;
+      --code-bg: #12161b;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 72px; }
+
+  /* header */
+  header.masthead { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  .mark {
+    width: 34px; height: 34px; border-radius: var(--radius);
+    background: var(--gradient); flex: none;
+    display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 17px;
+    box-shadow: var(--shadow);
+  }
+  h1 { font-size: 26px; line-height: 1.15; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .sub { color: var(--fg-muted); font-size: 13px; margin: 2px 0 0; }
+  .lede {
+    font-size: 15px; line-height: 1.6; color: var(--fg-muted);
+    max-width: 76ch; margin: 22px 0 34px;
+  }
+  .lede strong { color: var(--fg); font-weight: 600; }
+
+  h2 {
+    font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--fg-muted); margin: 44px 0 16px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── diagrams (inline SVG, theme-aware) ─────────────────────────────── */
+  .diagram {
+    width: 100%; overflow-x: auto; background: var(--card);
+    border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+    padding: 14px 16px; margin: 0 0 10px;
+  }
+  .diagram svg { display: block; width: 100%; height: auto; min-width: 680px; }
+  .diagram-cap { color: var(--fg-muted); font-size: 12px; margin: 0 0 6px; max-width: 76ch; }
+  svg text { font-family: inherit; fill: var(--fg); }
+  svg .t { font-size: 12.5px; font-weight: 600; }
+  svg .s { font-size: 10.5px; font-weight: 400; fill: var(--fg-muted); }
+  svg .zlabel { font-size: 10.5px; font-weight: 700; fill: var(--fg-muted); letter-spacing: .08em; }
+  svg .zone { fill: var(--muted); stroke: var(--border); }
+  svg .node { fill: var(--card); stroke: var(--border-strong); }
+  svg .accent { fill: var(--primary-weak); stroke: var(--primary); }
+  svg .edge  { stroke: var(--border-strong); stroke-width: 1.5; fill: none; }
+  svg .eacc  { stroke: var(--primary); stroke-width: 1.75; fill: none; }
+  svg .el { font-size: 10px; fill: var(--fg-muted); }
+
+  /* ── code snippets ──────────────────────────────────────────────────── */
+  .snippet {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: var(--shadow); padding: 12px 16px 14px; margin: 0 0 14px;
+  }
+  .snippet .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0 0 9px; flex-wrap: wrap; }
+  .snippet .hd b { font-size: 14px; font-weight: 600; }
+  .snippet .hd .path { font-family: var(--mono); font-size: 11px; color: var(--fg-muted); }
+
+  /* ── flow diagram ───────────────────────────────────────────────────── */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .stage {
+    display: grid; grid-template-columns: 40px 1fr; gap: 16px; align-items: stretch;
+  }
+  .rail { display: flex; flex-direction: column; align-items: center; }
+  .dot {
+    width: 30px; height: 30px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; font-weight: 700; font-size: 13px;
+    background: var(--primary); color: #fff; box-shadow: var(--shadow);
+  }
+  .line { width: 2px; flex: 1 1 auto; background: var(--border-strong); min-height: 18px; }
+  .stage:last-child .line { display: none; }
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 18px; box-shadow: var(--shadow);
+  }
+  .panel h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .panel p { margin: 0; color: var(--fg-muted); font-size: 13px; }
+  .panel .who { font-weight: 600; color: var(--primary); }
+  code, .kbd {
+    font-family: var(--mono); font-size: 12px; background: var(--code-bg);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1px 5px; color: var(--fg); white-space: nowrap;
+  }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 600; border-radius: var(--radius);
+    padding: 1px 7px; margin-left: 6px; vertical-align: middle;
+  }
+  .tag.run { background: var(--primary-weak); color: var(--primary); }
+
+  /* the fan-out row (SP → three consumers) */
+  .fanout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 2px 0 4px; }
+  .consumer {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; box-shadow: var(--shadow);
+  }
+  .consumer .h { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 7px; }
+  .consumer .h .ico { width: 8px; height: 8px; border-radius: 2px; background: var(--primary); flex: none; }
+  .consumer p { margin: 5px 0 0; color: var(--fg-muted); font-size: 12.5px; }
+  @media (max-width: 720px) { .fanout { grid-template-columns: 1fr; } }
+
+  /* callout — the row filter */
+  .callout {
+    background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--primary);
+    border-radius: 8px; padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .callout h3 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+  pre {
+    margin: 0; background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 14px; overflow-x: auto; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+  }
+  pre .k { color: var(--primary); font-weight: 600; }
+  pre .c { color: var(--fg-muted); font-style: italic; }
+  .note { color: var(--fg-muted); font-size: 12.5px; margin: 10px 0 0; }
+
+  /* management-plane grid */
+  .ops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 720px) { .ops { grid-template-columns: 1fr 1fr; } }
+  .op {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; box-shadow: var(--shadow);
+  }
+  .op b { font-size: 13.5px; font-weight: 600; }
+  .op span { display: block; color: var(--fg-muted); font-size: 12px; margin-top: 3px; }
+
+  /* roster table */
+  .tablecard { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-muted); font-weight: 700; background: var(--muted); }
+  td.mono { font-family: var(--mono); font-size: 11.5px; color: var(--fg-muted); }
+  tr:last-child td { border-bottom: none; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
+  .pill.on { background: var(--success-weak); color: var(--success); }
+  .pill.live { background: var(--warning-weak); color: var(--warning); }
+  .scroll { overflow-x: auto; }
+
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--fg-muted); font-size: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 14px 0 0; font-size: 12px; color: var(--fg-muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="mark">P</div>
+    <div>
+      <h1>Prism — Per-Tenant Isolation</h1>
+      <p class="sub">How one embedded analytics app serves every client with its own identity and its own data — no Databricks logins.</p>
+    </div>
+  </header>
+
+  <p class="lede">
+    Advito has ~130 client organizations. Prism embeds Databricks AI/BI dashboards and Genie
+    chat for all of them from a <strong>single application</strong>, yet each client sees only
+    <strong>its own</strong> travel data. The mechanism: every client organization is mapped to a
+    dedicated <strong>Service Principal (SP)</strong>, and every request runs <strong>as that SP</strong>.
+    Unity Catalog enforces isolation at the data layer with a <strong>row filter</strong>, so the
+    guarantee holds no matter what the app does. Clients authenticate through their own identity —
+    they never touch a Databricks login.
+  </p>
+
+  <h2>System architecture</h2>
+  <p class="diagram-cap">One application serves every client. The app resolves each request to a
+  dedicated per-tenant Service Principal and runs as it; Unity Catalog enforces the data boundary.</p>
+  <div class="diagram">
+    <svg viewBox="0 0 980 470" role="img" aria-label="Prism per-tenant isolation architecture">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--border-strong)"/></marker>
+        <marker id="arA" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--primary)"/></marker>
+      </defs>
+
+      <rect class="zone" x="12" y="64" width="168" height="150" rx="8"/>
+      <text class="zlabel" x="18" y="56">CLIENT</text>
+      <rect class="zone" x="206" y="40" width="300" height="404" rx="8"/>
+      <text class="zlabel" x="212" y="32">PRISM HOSTING</text>
+      <rect class="zone" x="532" y="40" width="436" height="404" rx="8"/>
+      <text class="zlabel" x="538" y="32">DATABRICKS — FEVM WORKSPACE</text>
+
+      <rect class="node" x="26" y="106" width="140" height="66" rx="6"/>
+      <text class="t" x="96" y="134" text-anchor="middle">Client user</text>
+      <text class="s" x="96" y="150" text-anchor="middle">their own IdP / login</text>
+
+      <rect class="node" x="222" y="84" width="268" height="56" rx="6"/>
+      <text class="t" x="356" y="108" text-anchor="middle">Edge gateway</text>
+      <text class="s" x="356" y="124" text-anchor="middle">reverse proxy · signs session</text>
+
+      <rect class="accent" x="222" y="168" width="268" height="56" rx="6"/>
+      <text class="t" x="356" y="192" text-anchor="middle">Prism app</text>
+      <text class="s" x="356" y="208" text-anchor="middle">FastAPI + React · SP resolver</text>
+
+      <rect class="node" x="222" y="284" width="268" height="140" rx="6"/>
+      <text class="t" x="238" y="308">Lakebase (Postgres)</text>
+      <text class="s" x="238" y="330">apex_client_registry — tenant → SP</text>
+      <text class="s" x="238" y="350">apex_sp_credentials — AES-GCM secret</text>
+      <text class="s" x="238" y="370">apex_app_users — white-label logins</text>
+      <text class="s" x="238" y="390">apex_tenant_audit — who / what / when</text>
+
+      <rect class="accent" x="548" y="84" width="196" height="82" rx="6"/>
+      <text class="t" x="646" y="116" text-anchor="middle">Tenant Service</text>
+      <text class="t" x="646" y="132" text-anchor="middle">Principals</text>
+      <text class="s" x="646" y="150" text-anchor="middle">one per client org</text>
+
+      <rect class="node" x="770" y="84" width="182" height="82" rx="6"/>
+      <text class="t" x="861" y="112" text-anchor="middle">Embedded surfaces</text>
+      <text class="s" x="861" y="132" text-anchor="middle">Genie · AI/BI</text>
+      <text class="s" x="861" y="148" text-anchor="middle">dashboards · SQL</text>
+
+      <rect class="accent" x="548" y="250" width="404" height="172" rx="6"/>
+      <text class="t" x="566" y="276">Unity Catalog — enforcement point</text>
+      <text class="s" x="566" y="300">summarydataset — governed fact table (client_id)</text>
+      <text class="s" x="566" y="322">tenant_row_filter — attached ON (client_id)</text>
+      <text class="s" x="566" y="344">sp_tenant_mapping — sp_app_id → tenant_id</text>
+      <text class="s" x="566" y="378">Filter joins the mapping on session_user() = the tenant SP,</text>
+      <text class="s" x="566" y="394">so each SP sees only its client's rows ('*' = see all).</text>
+
+      <path class="edge" marker-end="url(#ar)" d="M166 139 C 196 139 196 112 220 112"/>
+      <text class="el" x="150" y="102">HTTPS / login</text>
+      <path class="edge" marker-end="url(#ar)" d="M356 140 V166"/>
+      <text class="el" x="362" y="158">tenant_id in session</text>
+      <path class="edge" marker-end="url(#ar)" d="M356 224 V282"/>
+      <text class="el" x="362" y="258">resolve SP · decrypt secret</text>
+      <path class="eacc" marker-end="url(#arA)" d="M490 196 C 519 196 519 122 546 122"/>
+      <text class="el" x="470" y="176">mint M2M token as SP</text>
+      <path class="eacc" marker-end="url(#arA)" d="M744 124 H768"/>
+      <text class="el" x="742" y="114">as SP</text>
+      <path class="edge" marker-end="url(#ar)" d="M861 166 V248"/>
+      <text class="el" x="868" y="212">query</text>
+    </svg>
+  </div>
+  <div class="legend" style="margin:0 0 8px">
+    <span><span class="sw" style="background:var(--primary)"></span>Acts as the tenant Service Principal</span>
+    <span><span class="sw" style="background:var(--border-strong)"></span>Hosting / platform component</span>
+  </div>
+
+  <h2>Request flow — login to scoped data</h2>
+  <p class="diagram-cap">A single request, end to end. Every hop after login carries the tenant
+  identity, and the last two hops make the isolation impossible for the app to bypass.</p>
+  <div class="diagram">
+    <svg viewBox="0 0 980 118" role="img" aria-label="Per-request isolation flow">
+      <defs>
+        <marker id="fa" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--primary)"/></marker>
+      </defs>
+      <rect class="node" x="10"  y="30" width="140" height="60" rx="6"/>
+      <text class="t" x="80"  y="56" text-anchor="middle">1 · Login</text>
+      <text class="s" x="80"  y="74" text-anchor="middle">client user</text>
+      <rect class="node" x="168" y="30" width="140" height="60" rx="6"/>
+      <text class="t" x="238" y="56" text-anchor="middle">2 · Session</text>
+      <text class="s" x="238" y="74" text-anchor="middle">carries tenant_id</text>
+      <rect class="node" x="326" y="30" width="140" height="60" rx="6"/>
+      <text class="t" x="396" y="56" text-anchor="middle">3 · Resolve SP</text>
+      <text class="s" x="396" y="74" text-anchor="middle">registry lookup</text>
+      <rect class="node" x="484" y="30" width="140" height="60" rx="6"/>
+      <text class="t" x="554" y="56" text-anchor="middle">4 · Mint token</text>
+      <text class="s" x="554" y="74" text-anchor="middle">as tenant SP</text>
+      <rect class="node" x="642" y="30" width="140" height="60" rx="6"/>
+      <text class="t" x="712" y="56" text-anchor="middle">5 · Run query</text>
+      <text class="s" x="712" y="74" text-anchor="middle">as the SP</text>
+      <rect class="accent" x="800" y="30" width="140" height="60" rx="6"/>
+      <text class="t" x="870" y="56" text-anchor="middle">6 · Row filter</text>
+      <text class="s" x="870" y="74" text-anchor="middle">only its rows</text>
+      <path class="eacc" marker-end="url(#fa)" d="M150 60 H164"/>
+      <path class="eacc" marker-end="url(#fa)" d="M308 60 H322"/>
+      <path class="eacc" marker-end="url(#fa)" d="M466 60 H480"/>
+      <path class="eacc" marker-end="url(#fa)" d="M624 60 H638"/>
+      <path class="eacc" marker-end="url(#fa)" d="M782 60 H796"/>
+    </svg>
+  </div>
+  <div class="flow">
+
+    <div class="stage">
+      <div class="rail"><div class="dot">1</div><div class="line"></div></div>
+      <div class="panel">
+        <h3>White-label login</h3>
+        <p>A client user — <span class="who">alice@acmetravel.com</span> — signs in through Prism's
+        branded login (or the client's own IdP). No Databricks account, no Databricks UI.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="rail"><div class="dot">2</div><div class="line"></div></div>
+      <div class="panel">
+        <h3>Edge session carries the tenant</h3>
+        <p>The edge gateway mints a signed session cookie holding the user's
+        <code>tenant_id</code> — e.g. <code>acme-travel</code> — and reverse-proxies to the app.
+        This <code>tenant_id</code> is the single join key for everything downstream.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="rail"><div class="dot">3</div><div class="line"></div></div>
+      <div class="panel">
+        <h3>Tenant registry resolves the Service Principal</h3>
+        <p>The app looks up <code>tenant_id</code> in <code>apex_client_registry</code> (Lakebase)
+        and gets that tenant's dedicated <code>sp_app_id</code> and Genie space. The SP's OAuth
+        secret is stored <strong>AES-GCM encrypted</strong> in <code>apex_sp_credentials</code>.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="rail"><div class="dot">4</div><div class="line"></div></div>
+      <div class="panel">
+        <h3>Mint a token — as the tenant SP</h3>
+        <p>The app decrypts the secret and mints a short-lived <strong>M2M OAuth token</strong>
+        (<code>client_credentials</code>) for that SP. Nothing is provisioned per <em>user</em>;
+        identity is per client <em>organization</em>.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="rail"><div class="dot">5</div><div class="line"></div></div>
+      <div class="panel">
+        <h3>Every downstream call runs as that SP</h3>
+        <p>The token drives all three embedded surfaces. Because the SQL caller identity
+        (<code>session_user()</code>) <em>is</em> the tenant SP, the data layer can enforce scope
+        on its own — the app cannot accidentally leak across tenants.</p>
+        <div class="fanout">
+          <div class="consumer">
+            <div class="h"><span class="ico"></span>Genie<span class="tag run">as SP</span></div>
+            <p>Natural-language Q&amp;A over the tenant's data, via the Genie API.</p>
+          </div>
+          <div class="consumer">
+            <div class="h"><span class="ico"></span>AI/BI Dashboard<span class="tag run">as SP</span></div>
+            <p>Embedded dashboard token minted for the tenant SP.</p>
+          </div>
+          <div class="consumer">
+            <div class="h"><span class="ico"></span>SQL / Warehouse<span class="tag run">as SP</span></div>
+            <p>Ad-hoc queries execute under the SP identity.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="rail"><div class="dot">6</div></div>
+      <div class="callout">
+        <h3>Unity Catalog row filter — the enforcement point</h3>
+        <p style="margin:0 0 10px;color:var(--fg-muted)">The governed fact table
+        <code>summarydataset</code> has a row filter attached on <code>client_id</code>. The filter
+        joins a mapping table on the caller's SP identity, so a tenant SP only ever sees its own rows.
+        A mapping row of <code>'*'</code> (the app's own SP) is a wildcard used for the operator
+        "see-all" view and the onboarding picker.</p>
+<pre><span class="c">-- attached to summarydataset ON (client_id)</span>
+<span class="k">CREATE OR REPLACE FUNCTION</span> tenant_row_filter(tenant_id STRING)
+<span class="k">RETURN</span>
+  is_account_group_member('admins')          <span class="c">-- back-office bypass</span>
+  <span class="k">OR EXISTS</span> (
+    <span class="k">SELECT</span> 1 <span class="k">FROM</span> sp_tenant_mapping m
+    <span class="k">WHERE</span> m.sp_app_id = session_user()      <span class="c">-- = the tenant SP</span>
+      <span class="k">AND</span> m.active = true
+      <span class="k">AND</span> (m.tenant_id = tenant_row_filter.tenant_id
+           <span class="k">OR</span> m.tenant_id = '*')          <span class="c">-- '*' = see all (operator)</span>
+  )</pre>
+        <p class="note">Verified live: each tenant SP returns only its own <code>client_id</code>;
+        the app SP (mapped to <code>'*'</code>) returns all clients.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <h2>Sequence — a request over time</h2>
+  <p class="diagram-cap">The same request as message exchanges between participants. The two
+  accent hops — minting the token and the Unity Catalog row-filter evaluation — are where the
+  per-tenant guarantee is established and enforced.</p>
+  <div class="diagram">
+    <svg viewBox="0 0 980 412" role="img" aria-label="Per-request isolation sequence diagram">
+      <defs>
+        <marker id="sq" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--border-strong)"/></marker>
+        <marker id="sqA" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--primary)"/></marker>
+      </defs>
+
+      <!-- participant headers + lifelines -->
+      <g>
+        <rect class="node" x="8"   y="12" width="124" height="34" rx="6"/><text class="t" x="70"  y="34" text-anchor="middle">Client</text>
+        <rect class="node" x="168" y="12" width="124" height="34" rx="6"/><text class="t" x="230" y="34" text-anchor="middle">Edge gateway</text>
+        <rect class="accent" x="328" y="12" width="124" height="34" rx="6"/><text class="t" x="390" y="34" text-anchor="middle">Prism app</text>
+        <rect class="node" x="488" y="12" width="124" height="34" rx="6"/><text class="t" x="550" y="34" text-anchor="middle">Lakebase</text>
+        <rect class="node" x="648" y="12" width="124" height="34" rx="6"/><text class="t" x="710" y="34" text-anchor="middle">Databricks OIDC</text>
+        <rect class="accent" x="820" y="12" width="150" height="34" rx="6"/><text class="t" x="895" y="34" text-anchor="middle">SQL / Genie + UC</text>
+      </g>
+      <g stroke="var(--border)" stroke-width="1">
+        <line x1="70"  y1="46" x2="70"  y2="392"/>
+        <line x1="230" y1="46" x2="230" y2="392"/>
+        <line x1="390" y1="46" x2="390" y2="392"/>
+        <line x1="550" y1="46" x2="550" y2="392"/>
+        <line x1="710" y1="46" x2="710" y2="392"/>
+        <line x1="895" y1="46" x2="895" y2="392"/>
+      </g>
+
+      <!-- messages -->
+      <text class="el" x="150" y="82" text-anchor="middle">request + session cookie</text>
+      <path class="edge" marker-end="url(#sq)" d="M78 88 H222"/>
+
+      <text class="el" x="310" y="114" text-anchor="middle">proxy request + tenant_id</text>
+      <path class="edge" marker-end="url(#sq)" d="M238 120 H382"/>
+
+      <text class="el" x="470" y="146" text-anchor="middle">get_tenant(tenant_id)</text>
+      <path class="edge" marker-end="url(#sq)" d="M398 152 H542"/>
+
+      <text class="el" x="470" y="178" text-anchor="middle">sp_app_id + encrypted secret</text>
+      <path class="edge" stroke-dasharray="4 3" marker-end="url(#sq)" d="M542 184 H398"/>
+
+      <text class="el" x="550" y="210" text-anchor="middle">POST /oidc/v1/token — decrypt secret, client_credentials</text>
+      <path class="eacc" marker-end="url(#sqA)" d="M398 216 H702"/>
+
+      <text class="el" x="550" y="242" text-anchor="middle">access_token — every call now runs as the SP</text>
+      <path class="eacc" stroke-dasharray="4 3" marker-end="url(#sqA)" d="M702 248 H398"/>
+
+      <text class="el" x="642" y="274" text-anchor="middle">query / Genie ask — Bearer (as SP)</text>
+      <path class="edge" marker-end="url(#sq)" d="M398 280 H889"/>
+
+      <rect class="accent" x="756" y="292" width="214" height="26" rx="4"/>
+      <text class="s" x="863" y="309" text-anchor="middle">row filter: session_user() = SP  ⟶  sp_tenant_mapping</text>
+
+      <text class="el" x="642" y="342" text-anchor="middle">only this tenant's rows</text>
+      <path class="eacc" stroke-dasharray="4 3" marker-end="url(#sqA)" d="M889 348 H398"/>
+
+      <text class="el" x="230" y="374" text-anchor="middle">scoped dashboard / answer</text>
+      <path class="edge" stroke-dasharray="4 3" marker-end="url(#sq)" d="M382 380 H78"/>
+    </svg>
+  </div>
+
+  <h2>Management plane — the operator console</h2>
+  <p style="margin:-4px 0 16px;color:var(--fg-muted);max-width:76ch">
+    Onboarding a client is one operator action. It creates the SP, mints and encrypts its secret,
+    registers the tenant, writes the <code>sp_tenant_mapping</code> row, and grants the SP access to
+    the dashboards, Genie space, and governed table — then every step is audited.
+  </p>
+  <div class="ops">
+    <div class="op"><b>Onboard</b><span>Create SP + secret → register → map → grant. Secret shown once.</span></div>
+    <div class="op"><b>Rotate</b><span>Mint a fresh secret and revoke all previous ones.</span></div>
+    <div class="op"><b>Deactivate</b><span>Disable the SP, drop its secret, flip the mapping off.</span></div>
+    <div class="op"><b>Reactivate</b><span>Re-enable the SP with a new secret.</span></div>
+    <div class="op"><b>Delete</b><span>Tear down the SP and remove all registry + mapping rows.</span></div>
+    <div class="op"><b>Verify</b><span>Query as each SP and assert it sees only its own rows.</span></div>
+  </div>
+
+  <h2>Key code</h2>
+  <p class="diagram-cap">The load-bearing pieces, straight from the app.</p>
+
+  <div class="snippet">
+    <div class="hd"><b>1 · Onboard a tenant — create the Service Principal</b><span class="path">server/tenants/sp_lifecycle.py</span></div>
+<pre><span class="k">def</span> onboard_sp(tenant_id, display_name, genie_space_id=None):
+    w = runtime.admin_client()                  <span class="c"># workspace-admin client</span>
+    display = f"{TENANT_SP_PREFIX}-{tenant_id}"  <span class="c"># e.g. prism-tenant-acme-travel</span>
+
+    sp = w.service_principals.create(display_name=display, active=<span class="k">True</span>)
+    sp_app_id = sp.application_id
+
+    <span class="c"># mint the SP's OAuth secret (returned exactly once)</span>
+    created = w.service_principal_secrets_proxy.create(service_principal_id=sp.id)
+    secret  = created.secret
+
+    registry.insert_tenant(tenant_id=tenant_id, sp_app_id=sp_app_id,
+                           sp_display_name=display, genie_space_id=genie_space_id)
+    registry.put_secret(sp_app_id, secret)       <span class="c"># AES-GCM encrypted at rest</span>
+    <span class="k">return</span> {"sp_app_id": sp_app_id, "client_secret": secret}</pre>
+  </div>
+
+  <div class="snippet">
+    <div class="hd"><b>2 · Mint an M2M token — as the tenant SP</b><span class="path">server/tenants/minter.py</span></div>
+<pre>resp = requests.post(
+    f"{host}/oidc/v1/token",
+    data={"grant_type": "client_credentials", "scope": "all-apis"},
+    auth=(client_id, client_secret),             <span class="c"># the tenant SP's creds</span>
+)
+access_token = resp.json()["access_token"]       <span class="c"># now session_user() == this SP</span></pre>
+  </div>
+
+  <div class="snippet">
+    <div class="hd"><b>3 · Row-level security — filter, attach, map</b><span class="path">apply_row_filter.py · unity_catalog.py</span></div>
+<pre><span class="c">-- the row filter: keyed on the SQL caller identity (the SP)</span>
+<span class="k">CREATE OR REPLACE FUNCTION</span> tenant_row_filter(tenant_id STRING)
+<span class="k">RETURN</span> is_account_group_member('admins')
+    <span class="k">OR EXISTS</span> (<span class="k">SELECT</span> 1 <span class="k">FROM</span> sp_tenant_mapping m
+               <span class="k">WHERE</span> m.sp_app_id = session_user() <span class="k">AND</span> m.active
+                 <span class="k">AND</span> (m.tenant_id = tenant_row_filter.tenant_id <span class="k">OR</span> m.tenant_id = '*'));
+
+<span class="c">-- attach it to the governed fact table (once)</span>
+<span class="k">ALTER TABLE</span> prism_travel.summarydataset
+  <span class="k">SET ROW FILTER</span> prism_travel.tenant_row_filter <span class="k">ON</span> (client_id);
+
+<span class="c">-- one mapping row per onboarded tenant SP</span>
+<span class="k">INSERT INTO</span> sp_tenant_mapping (sp_app_id, tenant_id, active)
+<span class="k">VALUES</span> ('&lt;sp_app_id&gt;', '&lt;tenant_id&gt;', <span class="k">true</span>);</pre>
+  </div>
+
+  <div class="snippet">
+    <div class="hd"><b>4 · Prove it — verify isolation as the SP</b><span class="path">server/tenants/unity_catalog.py</span></div>
+<pre><span class="c"># query the governed table AS the tenant SP and assert what it can see</span>
+token = minter().get_token(sp_app_id, secret_for_sp(sp_app_id))
+seen  = run_sql_as(token, "SELECT DISTINCT client_id FROM summarydataset")
+<span class="k">assert</span> seen == [tenant_id]       <span class="c"># the SP sees only its own client's rows</span></pre>
+  </div>
+
+  <h2>Live roster — this demo workspace</h2>
+  <p style="margin:-4px 0 16px;color:var(--fg-muted);max-width:76ch">
+    Ten client organizations carry data in <code>summarydataset</code>. Three are onboarded with a
+    live Service Principal; the other seven are staged in the onboarding picker to be created
+    <strong>live</strong> during the walkthrough.
+  </p>
+  <div class="tablecard scroll">
+    <table>
+      <thead>
+        <tr><th>Client organization</th><th>tenant_id</th><th>Service Principal</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Acme Travel</td><td class="mono">acme-travel</td><td class="mono">prism-tenant-acme-travel</td><td><span class="pill on">Onboarded</span></td></tr>
+        <tr><td>Globex</td><td class="mono">globex</td><td class="mono">prism-tenant-globex</td><td><span class="pill on">Onboarded</span></td></tr>
+        <tr><td>Initech</td><td class="mono">initech</td><td class="mono">prism-tenant-initech</td><td><span class="pill on">Onboarded</span></td></tr>
+        <tr><td>Umbrella Corp</td><td class="mono">umbrella</td><td class="mono">— (create live)</td><td><span class="pill live">Onboard live</span></td></tr>
+        <tr><td>Meridian Health Systems</td><td class="mono">meridian-health</td><td class="mono">— (create live)</td><td><span class="pill live">Onboard live</span></td></tr>
+        <tr><td>Northwind Logistics</td><td class="mono">northwind-logistics</td><td class="mono">— (create live)</td><td><span class="pill live">Onboard live</span></td></tr>
+        <tr><td>Vantage Pharmaceuticals</td><td class="mono">vantage-pharma</td><td class="mono">— (create live)</td><td><span class="pill live">Onboard live</span></td></tr>
+        <tr><td>Atlas Energy</td><td class="mono">atlas-energy</td><td class="mono">— (create live)</td><td><span class="pill live">Onboard live</span></td></tr>
+        <tr><td>Blue Harbor Financial</td><td class="mono">blue-harbor</td><td class="mono">— (create live)</td><td><span class="pill live">Onboard live</span></td></tr>
+        <tr><td>Summit Manufacturing</td><td class="mono">summit-mfg</td><td class="mono">— (create live)</td><td><span class="pill live">Onboard live</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--success)"></span>Onboarded — live SP, mapped, isolation verified</span>
+    <span><span class="sw" style="background:var(--warning)"></span>Onboard live — data staged, SP created on stage</span>
+  </div>
+
+  <footer>
+    Prism · per-tenant Service Principal isolation on Databricks (FEVM stable workspace).
+    Governed table <code>serverless_stable_71zsua_catalog.prism_travel.summarydataset</code> ·
+    tenant column <code>client_id</code> · filter <code>tenant_row_filter</code>.
+  </footer>
+
+</div>
+</body>
+</html>

@@ -37,6 +37,12 @@ _CONTACT = {
     "globex": ("ben", "Ben Ortiz"),
     "initech": ("carol", "Carol Nguyen"),
     "umbrella": ("erin", "Erin Walsh"),
+    "meridian-health": ("maria", "Maria Alvarez"),
+    "northwind-logistics": ("nathan", "Nathan Brooks"),
+    "vantage-pharma": ("vivian", "Vivian Shah"),
+    "atlas-energy": ("aaron", "Aaron Klein"),
+    "blue-harbor": ("bianca", "Bianca Moreau"),
+    "summit-mfg": ("sam", "Sam Whitfield"),
 }
 
 OPERATOR = ("dana@prism.example", "Dana Lee", "All Clients", "*", "operator")

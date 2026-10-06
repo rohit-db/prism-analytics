@@ -1,0 +1,54 @@
+{
+  "title": "Prism Travel Intelligence",
+  "description": "Answer questions about corporate travel spend, CO2 emissions, volume, and carbon budgets across Air, Hotel, Rail, Car, and Taxi/Rideshare. Always use the metric view measures; report emissions in tCO2e and spend in USD unless asked otherwise.\n\nBuilt with Databricks AI Dev Kit",
+  "serialized_space": {
+    "version": 2,
+    "config": {
+      "sample_questions": [
+        {
+          "id": "01f18f363dd717ad80691cd5460efe43",
+          "question": [
+            "Total travel spend by category this year"
+          ]
+        },
+        {
+          "id": "01f18f363dd811c784272036dc03b051",
+          "question": [
+            "Top 5 destination countries by CO2 emissions"
+          ]
+        },
+        {
+          "id": "01f18f363dd8173b8755fecb3d2e9181",
+          "question": [
+            "How is spend trending vs last year?"
+          ]
+        },
+        {
+          "id": "01f18f363dd81bb39cb01ffc78b06697",
+          "question": [
+            "Air vs hotel vs rail spend by month"
+          ]
+        },
+        {
+          "id": "01f18f363dd910a5bdbd5dc3ec9113f3",
+          "question": [
+            "Which vendors have the highest emissions per km?"
+          ]
+        },
+        {
+          "id": "01f18f363dd9156ca1c35318a18f1bce",
+          "question": [
+            "Carbon budget remaining by client"
+          ]
+        }
+      ]
+    },
+    "data_sources": {
+      "tables": [
+        {
+          "identifier": "serverless_stable_71zsua_catalog.prism_travel.travel_metrics"
+        }
+      ]
+    }
+  }
+}

@@ -121,7 +121,12 @@ RETURN
     FROM {catalog}.{schema}.sp_tenant_mapping m
     WHERE m.sp_app_id = session_user()
       AND m.active = true
-      AND m.tenant_id = tenant_row_filter.tenant_id
+      -- A mapping row of tenant_id = '*' is a wildcard: that SP sees ALL rows.
+      -- The app's own Service Principal is mapped to '*' so the operator view
+      -- (tenant_id = '*', which resolves to the app SP) and the onboard client
+      -- picker can read across every tenant, without adding the SP to
+      -- {admin_group}. Per-tenant SPs carry an exact tenant_id and see only theirs.
+      AND (m.tenant_id = tenant_row_filter.tenant_id OR m.tenant_id = '*')
   )""",
         )
     )
