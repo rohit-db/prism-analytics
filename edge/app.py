@@ -21,7 +21,7 @@ from edge.broker import broker
 from edge.config import CONFIG
 from edge import proxy
 from edge.auth import SESSION_COOKIE, SESSION_TTL_SECONDS, authenticate, issue_session, verify_session
-from edge.login_page import render_login_page
+from edge.login_page import render_login_page, template_status as _template_status
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("edge")
@@ -71,6 +71,7 @@ async def health() -> JSONResponse:
         "user_directory": "lakebase" if CONFIG.lakebase_enabled else "in-code fallback",
         "lakebase_ok": db_ok,
         "lakebase_detail": db_detail,
+        "login_template": _template_status(),
     })
 
 

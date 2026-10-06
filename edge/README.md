@@ -140,6 +140,14 @@ Sign in with any of the fallback logins (`alice@cloudventure.com`,
 `GET http://localhost:9000/__edge/health` reports config + whether the edge SP
 token is mintable, without touching upstream.
 
+> **Hosting the edge off your own network?** If the workspace enforces IP access
+> lists, the Apps front door enforces them too, so the proxy hop 403s from any
+> non-allowlisted address. `__edge/health` will still look green — minting the SP
+> token is not IP-governed — so it cannot detect this. Serverless platforms rotate
+> their egress IPs, which makes allowlisting them unworkable without a static-IP
+> add-on. Details, measurements and the options are in
+> [the white-label hosting doc](../docs/handoff/whitelabel-auth-and-hosting.md#workspace-ip-access-lists-gate-the-edge-model-a).
+
 ## What this proves — and the dashboard boundary
 
 The front door reliably carries the **app shell** (React UI, Genie MCP chat,

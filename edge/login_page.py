@@ -41,6 +41,22 @@ def render_login_page(error: str | None = None, next_url: str = "/", mode: str =
         return _fallback_page(error=error, next_url=next_url)
 
 
+def template_status() -> str:
+    """Which template ``render_login_page`` will use — reported by ``__edge/health``.
+
+    Falling back is silent by design for the end user, but that also makes a
+    broken deployment look merely plain rather than misconfigured: a serverless
+    build that ships ``edge/`` without ``server/`` serves an unbranded page and
+    nothing else complains. Health states it, and names the import error.
+    """
+    try:
+        from server.auth.login import render_login_page as _shared  # noqa: F401
+
+        return "shared"
+    except Exception as exc:  # noqa: BLE001
+        return f"fallback ({type(exc).__name__}: {exc})"
+
+
 def _fallback_page(error: str | None = None, next_url: str = "/") -> str:
     """Unstyled last resort, used only if the shared template cannot be imported.
 
