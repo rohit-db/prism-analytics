@@ -51,6 +51,13 @@ _REPO = Path(__file__).resolve().parents[2]
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
+# Load .env before reading any config below. Without it this script runs on a
+# partial environment and reports an isolation FAILURE when isolation is
+# actually intact — the most misleading result it could give.
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv()
+
 
 def _env(name: str, default: str = "") -> str:
     return (os.environ.get(name) or default).strip()

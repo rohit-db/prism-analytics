@@ -1,9 +1,13 @@
-fastapi
-uvicorn
-databricks-sdk
-pydantic
-python-dotenv
-requests
-cryptography
-mcp
-psycopg[binary]
+# Pinned to the versions proven working locally. Previously unpinned, which let
+# fresh installs pull mcp 2.0.0 — whose API dropped `streamablehttp_client` from
+# mcp.client.streamable_http — and crash the app on import. Compatible-release
+# (~=) pins allow patch updates but block breaking minor/major jumps.
+fastapi~=0.140.0
+uvicorn~=0.51.0
+databricks-sdk~=0.65.0
+pydantic~=2.11
+python-dotenv~=1.1
+requests~=2.32
+cryptography~=45.0
+mcp~=1.12.4
+psycopg[binary]~=3.2

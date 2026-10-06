@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 230 48" role="img" aria-label="Prism">
+  <defs>
+    <linearGradient id="plg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2272b4"/>
+      <stop offset="55%" stop-color="#4299e0"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="6" width="36" height="36" rx="6" fill="url(#plg)"/>
+  <path d="M18 13.5L26.5 28h-17z" fill="none" stroke="#fff" stroke-width="2.4"
+        stroke-linejoin="round" opacity="0.95"/>
+  <path d="M13.5 33h9" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <text x="48" y="24" font-family="Inter, system-ui, sans-serif" font-size="18"
+        font-weight="600" letter-spacing="-0.4" fill="currentColor">Prism</text>
+  <text x="48" y="38" font-family="Inter, system-ui, sans-serif" font-size="9.5"
+        font-weight="500" letter-spacing="1.8" fill="currentColor" opacity="0.6">TRAVEL INTELLIGENCE</text>
+</svg>

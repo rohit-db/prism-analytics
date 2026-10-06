@@ -16,6 +16,15 @@ import {
   LayoutDashboard,
   BarChart3,
   ArrowLeft,
+  Plane,
+  ShoppingCart,
+  Package,
+  Percent,
+  Receipt,
+  BedDouble,
+  Building2,
+  CalendarCheck,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -66,6 +75,17 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
   BarChart3,
   ArrowLeftNav: ArrowLeft,
+  // KPI-tile icons referenced by content.config.json across verticals
+  // (travel / retail / hospitality).
+  Plane,
+  ShoppingCart,
+  Package,
+  Percent,
+  Receipt,
+  BedDouble,
+  Building2,
+  CalendarCheck,
+  TrendingUp,
 };
 
 // ─── Filter state ───────────────────────────────────────────────────────────
@@ -171,16 +191,23 @@ export const FILTERS: Record<FilterKey, FilterDef> = {
 // AssetSpec (types.ts); App maps it to DashboardSpec via toEmbedSpec() so the
 // helper signatures don't change.
 
+// AI/BI embed config: how the dashboard's native global-filter panel behaves.
+// Mirrors @databricks/aibi-client's GlobalFilterVisibility (SDK ≥ 1.2.0).
+// `disabled` hides the panel + its toggle button entirely but still honors
+// filter values pushed via the embed URL — i.e. the host FilterBar keeps working.
+export type GlobalFilterVisibility = "hiddenByDefault" | "shownByDefault" | "disabled";
+
 export interface DashboardSpec {
   id: string;                                   // Lakeview dashboard id
   globalFilterPage: string;                     // "Global Filters" page id
   filters: Partial<Record<FilterKey, string>>;  // FilterKey → widget id
   workspace?: string;                           // optional per-dashboard workspace
   org?: string;                                 // optional per-dashboard org id
+  globalFilterVisibility?: GlobalFilterVisibility; // default "disabled" (host FilterBar is the only filter UI)
 }
 
 export function getSupportedFilterKeys(spec?: DashboardSpec): FilterKey[] {
-  if (!spec) return [];
+  if (!spec?.filters) return [];
   return (Object.keys(spec.filters) as FilterKey[]).filter((k) => !!spec.filters[k]);
 }
 
@@ -505,6 +532,7 @@ interface RouteNavLike {
   icon: string;
   section: RouteSection;
   order: number;
+  placeholder?: boolean;
 }
 interface AssetSpecLike {
   label: string;
@@ -566,7 +594,9 @@ export function buildRoutes(registry: RegistryLike): RouteConfig[] {
       label: spec.label,
       icon: spec.nav!.icon,
       section: spec.nav!.section,
-      mode: "custom" as const,
+      // A nav-only asset renders the "coming soon" stub instead of an embed, so a
+      // deployment can show its full intended nav before every dashboard exists.
+      mode: spec.nav!.placeholder ? ("placeholder" as const) : ("custom" as const),
       dashboard: key,
       order: spec.nav!.order,
     }));

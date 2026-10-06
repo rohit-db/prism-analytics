@@ -11,7 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@databricks/aibi-client": "^1.0.3-alpha.0",
+    "@databricks/aibi-client": "^1.2.0",
     "@mcp-ui/client": "^7.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

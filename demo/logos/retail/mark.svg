@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Meridian Retail">
+  <defs>
+    <linearGradient id="mg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c2410c"/>
+      <stop offset="55%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#mg)"/>
+  <!-- Stylised 'M' as two ascending strokes: a meridian / growth motif. -->
+  <path d="M16 45V22l10 12 10-12v23" fill="none" stroke="#fff" stroke-width="4.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="46" cy="24" r="4" fill="#fff" opacity="0.9"/>
+</svg>

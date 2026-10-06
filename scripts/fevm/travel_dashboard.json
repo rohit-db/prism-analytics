@@ -1,0 +1,832 @@
+{
+  "datasets": [
+    {
+      "name": "spend_ds",
+      "displayName": "Spend",
+      "queryLines": [
+        "SELECT travel_month, client_name, category, destination_region, travel_sector,\n  MEASURE(gross_spend_usd) AS spend_usd,\n  MEASURE(component_count) AS trips,\n  MEASURE(traveler_count) AS travelers\nFROM serverless_stable_71zsua_catalog.prism_travel.travel_metrics GROUP BY ALL"
+      ]
+    },
+    {
+      "name": "sus_ds",
+      "displayName": "Sustainability",
+      "queryLines": [
+        "SELECT travel_month, client_name, category, destination_region, travel_sector,\n  MEASURE(total_emissions_advito) AS emissions_tco2e,\n  MEASURE(budget_remaining) AS budget_remaining,\n  MEASURE(emissions_per_km) AS kgco2e_per_km\nFROM serverless_stable_71zsua_catalog.prism_travel.travel_metrics GROUP BY ALL"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "spend",
+      "displayName": "Spend",
+      "layout": [
+        {
+          "widget": {
+            "name": "spend_title",
+            "textbox_spec": "# Travel Intelligence \u2014 Spend\nGross spend, volume, and travelers across Air, Hotel, Rail, Car & Taxi."
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "f_client",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "spend_ds",
+                  "fields": [
+                    {
+                      "name": "client_name",
+                      "expression": "`client_name`"
+                    },
+                    {
+                      "name": "client_name_assoc",
+                      "expression": "COUNT_IF(`client_name` IS NOT NULL)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "client_name",
+                    "displayName": "Client",
+                    "queryName": "main"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "f_category",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "spend_ds",
+                  "fields": [
+                    {
+                      "name": "category",
+                      "expression": "`category`"
+                    },
+                    {
+                      "name": "category_assoc",
+                      "expression": "COUNT_IF(`category` IS NOT NULL)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "category",
+                    "displayName": "Category",
+                    "queryName": "main"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 1,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "f_region",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "spend_ds",
+                  "fields": [
+                    {
+                      "name": "destination_region",
+                      "expression": "`destination_region`"
+                    },
+                    {
+                      "name": "destination_region_assoc",
+                      "expression": "COUNT_IF(`destination_region` IS NOT NULL)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "destination_region",
+                    "displayName": "Region",
+                    "queryName": "main"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "c_spend",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "spend_ds",
+                  "fields": [
+                    {
+                      "name": "sum(spend_usd)",
+                      "expression": "SUM(`spend_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(spend_usd)",
+                  "displayName": "Gross Spend (USD)"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_trips",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "spend_ds",
+                  "fields": [
+                    {
+                      "name": "sum(trips)",
+                      "expression": "SUM(`trips`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(trips)",
+                  "displayName": "Trips"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_travelers",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "spend_ds",
+                  "fields": [
+                    {
+                      "name": "sum(travelers)",
+                      "expression": "SUM(`travelers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(travelers)",
+                  "displayName": "Travelers"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "spend_trend",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "spend_ds",
+                  "fields": [
+                    {
+                      "name": "travel_month",
+                      "expression": "`travel_month`"
+                    },
+                    {
+                      "name": "sum(spend_usd)",
+                      "expression": "SUM(`spend_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "travel_month",
+                  "displayName": "Month",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(spend_usd)",
+                  "displayName": "Spend (USD)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "spend_cat",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "spend_ds",
+                  "fields": [
+                    {
+                      "name": "category",
+                      "expression": "`category`"
+                    },
+                    {
+                      "name": "sum(spend_usd)",
+                      "expression": "SUM(`spend_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "category",
+                  "displayName": "Category",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(spend_usd)",
+                  "displayName": "Spend (USD)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "spend_region",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "spend_ds",
+                  "fields": [
+                    {
+                      "name": "destination_region",
+                      "expression": "`destination_region`"
+                    },
+                    {
+                      "name": "sum(spend_usd)",
+                      "expression": "SUM(`spend_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "destination_region",
+                  "displayName": "Region",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(spend_usd)",
+                  "displayName": "Spend (USD)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 10,
+            "width": 3,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "sustainability",
+      "displayName": "Sustainability",
+      "layout": [
+        {
+          "widget": {
+            "name": "sus_title",
+            "textbox_spec": "# Travel Intelligence \u2014 Sustainability\nCO\u2082 emissions (tCO\u2082e, Advito methodology), carbon budget, and intensity."
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "sf_client",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sus_ds",
+                  "fields": [
+                    {
+                      "name": "client_name",
+                      "expression": "`client_name`"
+                    },
+                    {
+                      "name": "client_name_assoc",
+                      "expression": "COUNT_IF(`client_name` IS NOT NULL)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "client_name",
+                    "displayName": "Client",
+                    "queryName": "main"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "sf_category",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sus_ds",
+                  "fields": [
+                    {
+                      "name": "category",
+                      "expression": "`category`"
+                    },
+                    {
+                      "name": "category_assoc",
+                      "expression": "COUNT_IF(`category` IS NOT NULL)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "category",
+                    "displayName": "Category",
+                    "queryName": "main"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 1,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "sf_region",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sus_ds",
+                  "fields": [
+                    {
+                      "name": "destination_region",
+                      "expression": "`destination_region`"
+                    },
+                    {
+                      "name": "destination_region_assoc",
+                      "expression": "COUNT_IF(`destination_region` IS NOT NULL)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "destination_region",
+                    "displayName": "Region",
+                    "queryName": "main"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "c_emis",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sus_ds",
+                  "fields": [
+                    {
+                      "name": "sum(emissions_tco2e)",
+                      "expression": "SUM(`emissions_tco2e`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(emissions_tco2e)",
+                  "displayName": "Emissions (tCO\u2082e)"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_budget",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sus_ds",
+                  "fields": [
+                    {
+                      "name": "sum(budget_remaining)",
+                      "expression": "SUM(`budget_remaining`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(budget_remaining)",
+                  "displayName": "Budget Remaining (tCO\u2082e)"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_intensity",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sus_ds",
+                  "fields": [
+                    {
+                      "name": "avg(kgco2e_per_km)",
+                      "expression": "AVG(`kgco2e_per_km`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(kgco2e_per_km)",
+                  "displayName": "Avg kgCO\u2082e / km"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "emis_trend",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sus_ds",
+                  "fields": [
+                    {
+                      "name": "travel_month",
+                      "expression": "`travel_month`"
+                    },
+                    {
+                      "name": "sum(emissions_tco2e)",
+                      "expression": "SUM(`emissions_tco2e`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "travel_month",
+                  "displayName": "Month",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(emissions_tco2e)",
+                  "displayName": "Emissions (tCO\u2082e)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "emis_cat",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sus_ds",
+                  "fields": [
+                    {
+                      "name": "category",
+                      "expression": "`category`"
+                    },
+                    {
+                      "name": "sum(emissions_tco2e)",
+                      "expression": "SUM(`emissions_tco2e`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "category",
+                  "displayName": "Category",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(emissions_tco2e)",
+                  "displayName": "Emissions (tCO\u2082e)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "emis_region",
+            "queries": [
+              {
+                "name": "main",
+                "query": {
+                  "datasetName": "sus_ds",
+                  "fields": [
+                    {
+                      "name": "destination_region",
+                      "expression": "`destination_region`"
+                    },
+                    {
+                      "name": "sum(emissions_tco2e)",
+                      "expression": "SUM(`emissions_tco2e`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "destination_region",
+                  "displayName": "Region",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(emissions_tco2e)",
+                  "displayName": "Emissions (tCO\u2082e)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 10,
+            "width": 3,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ]
+}

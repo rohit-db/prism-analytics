@@ -1,0 +1,32 @@
+{
+  "identity": {
+    "appName": "Prism",
+    "shortName": "Prism",
+    "tagline": "Travel Intelligence",
+    "logo": "/brand/logo.svg",
+    "logoMark": "/brand/mark.svg",
+    "favicon": "/brand/favicon.svg"
+  },
+  "colors": {
+    "accent": "#2272b4",
+    "accentAlt": "#4299e0",
+    "accentAlt2": "#7c3aed",
+    "primary": "#2272b4",
+    "primaryDark": "#0e538b",
+    "primaryLight": "#d7edfe",
+    "accentDark": "#0e538b",
+    "sidebarFrom": "#04355d",
+    "sidebarVia": "#0e538b",
+    "sidebarTo": "#2272b4"
+  },
+  "design": {
+    "radius": "0.25rem",
+    "fontSans": "'Inter', system-ui, sans-serif",
+    "fontDisplay": "'Inter', system-ui, sans-serif",
+    "fontUrl": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+    "headingTracking": "-0.02em"
+  },
+  "defaults": {
+    "theme": "light"
+  }
+}

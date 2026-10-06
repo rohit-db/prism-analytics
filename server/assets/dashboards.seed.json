@@ -1,35 +1,18 @@
 {
-  "_note": "Dashboard asset registry (seed / JSON fallback). Server-owned source of truth for AI/BI dashboard specs + per-page Genie prompts, resolved by server/assets/registry.py and exposed via GET /api/assets. The frontend bundles a copy for fail-soft. Filter render vocabulary (FilterKey) lives in frontend/src/config.ts FILTERS; the `filters` map here only references those keys. Nav (path/icon/section/order) for a dashboard lives on the asset's `nav` object and drives its sidebar entry + route via config.ts buildRoutes(); fixed non-asset pages (Home, Ask Prism, My Filters) stay in config.ts FIXED_REACT_ROUTES.",
+  "_note": "Dashboard asset registry (seed / JSON fallback). Server-owned source of truth for AI/BI dashboard specs + per-page Genie prompts, resolved by server/assets/registry.py and exposed via GET /api/assets. The frontend bundles a copy for fail-soft. Filter render vocabulary (FilterKey) lives in frontend/src/config.ts FILTERS; the `filters` map here only references those keys. Nav (path/icon/section/order) for a dashboard lives on the asset's `nav` object and drives its sidebar entry + route via config.ts buildRoutes(); fixed non-asset pages (Home, Ask Prism, My Filters) stay in config.ts FIXED_REACT_ROUTES. NOTE: points at the FEVM demo dashboard 01f18f35b8561fb79677c244188f4c16 (pages: spend, sustainability).",
   "assets": {
     "spend": {
       "label": "Spend",
-      "dashboardId": "01f1271698161d42b3c66528415775e8",
-      "globalFilterPage": "54194f59",
-      "filters": {
-        "currentPeriod": "period",
-        "previousPeriod": "previous_period",
-        "travelSector": "tsector",
-        "destinationRegion": "dest_region"
-      },
+      "dashboardId": "01f18f35b8561fb79677c244188f4c16",
       "pages": [
         {
-          "pageId": "summary",
-          "label": "Summary",
+          "pageId": "spend",
+          "label": "Spend",
           "summaryPrompt": "Write a concise executive summary of corporate travel SPEND for the current period. Cover total spend, the top spend categories, the top destinations, and the most significant year-over-year changes. Use specific numbers and keep it to a few short paragraphs.",
           "suggestions": [
             "Total spend by category for 2025?",
             "Top 10 destinations by gross spend USD?",
             "Compare spend 2025 vs 2024 by travel sector?"
-          ]
-        },
-        {
-          "pageId": "carbon_forecasting",
-          "label": "Carbon Forecasting",
-          "summaryPrompt": "Summarize the carbon emissions forecast: the projected CO2 emissions trend, the key drivers behind it, and how the trajectory compares to the current period. Use specific numbers.",
-          "suggestions": [
-            "What is the projected CO2 emissions trend?",
-            "Which categories drive future emissions most?",
-            "How do forecasted emissions compare to last year?"
           ]
         }
       ],
@@ -42,33 +25,16 @@
     },
     "sustainability": {
       "label": "Sustainability",
-      "dashboardId": "01f1271698161d42b3c66528415775e8",
-      "globalFilterPage": "54194f59",
-      "filters": {
-        "currentPeriod": "period",
-        "previousPeriod": "previous_period",
-        "travelSector": "tsector",
-        "destinationRegion": "dest_region"
-      },
+      "dashboardId": "01f18f35b8561fb79677c244188f4c16",
       "pages": [
         {
-          "pageId": "summary",
-          "label": "Summary",
+          "pageId": "sustainability",
+          "label": "Sustainability",
           "summaryPrompt": "Write a concise executive summary of travel SUSTAINABILITY for the current period. Cover total CO2 emissions, emissions by travel category, the most carbon-intensive categories or destinations, and notable year-over-year changes. Use specific numbers and keep it to a few short paragraphs.",
           "suggestions": [
             "Total emissions by category for 2025?",
             "Top 5 countries by CO2 emissions?",
             "What is the emissions per km for Air travel?"
-          ]
-        },
-        {
-          "pageId": "carbon_forecasting",
-          "label": "Carbon Forecasting",
-          "summaryPrompt": "Summarize the carbon emissions forecast: the projected CO2 emissions trend, the key drivers behind it, and how the trajectory compares to the current period. Use specific numbers.",
-          "suggestions": [
-            "What is the projected CO2 emissions trend?",
-            "Which categories drive future emissions most?",
-            "How do forecasted emissions compare to last year?"
           ]
         }
       ],

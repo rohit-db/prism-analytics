@@ -14,6 +14,11 @@ app.add_middleware(SessionGateMiddleware)
 from server.routes.api import router as api_router
 app.include_router(api_router, prefix="/api")
 
+# Runtime brand + copy (GET /api/config). Read per request so a config edit needs no
+# rebuild or restart — the seam that lets one build serve several branded instances.
+from server.routes.app_config import router as app_config_router
+app.include_router(app_config_router, prefix="/api")
+
 from server.routes.genie_mcp import router as genie_mcp_router
 app.include_router(genie_mcp_router, prefix="/api")
 
@@ -92,6 +97,14 @@ def _ensure_lakebase_schema() -> None:
 app.include_router(auth_router)
 
 frontend_dir = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+
+# Per-instance logo assets. BRAND_ASSETS_DIR overrides the built-in /brand/* files so each
+# branded instance can serve its own logo.svg / mark.svg / favicon.svg off ONE build.
+# Mounted BEFORE the SPA catch-all; missing files fall back to BrandLogo's monogram.
+_brand_assets_dir = os.environ.get("BRAND_ASSETS_DIR", "").strip()
+if _brand_assets_dir and os.path.isdir(_brand_assets_dir):
+    app.mount("/brand", StaticFiles(directory=_brand_assets_dir), name="brand-assets")
+
 if os.path.exists(frontend_dir):
     assets_dir = os.path.join(frontend_dir, "assets")
     if os.path.exists(assets_dir):

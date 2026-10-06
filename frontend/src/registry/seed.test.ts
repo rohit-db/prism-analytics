@@ -1,20 +1,28 @@
 import { describe, it, expect } from "vitest";
 import { bundledRegistry } from "./seed";
 
+// The seed carries deployment config: its dashboard id and page ids change every
+// time the app is pointed at a new workspace. Assert the shape and wiring rather
+// than freezing literals, so a retarget doesn't fail these.
 describe("bundled registry seed", () => {
-  it("carries the spend + sustainability assets", () => {
-    expect(bundledRegistry.assets.spend).toBeDefined();
-    expect(bundledRegistry.assets.sustainability).toBeDefined();
-    expect(bundledRegistry.assets.spend.dashboardId).toBe(
-      "01f1271698161d42b3c66528415775e8"
-    );
+  it("carries the spend + sustainability assets on one dashboard", () => {
+    const { spend, sustainability } = bundledRegistry.assets;
+    expect(spend).toBeDefined();
+    expect(sustainability).toBeDefined();
+    expect(spend.dashboardId).toBeTruthy();
+    // Both surfaces are pages of the same physical dashboard.
+    expect(sustainability.dashboardId).toBe(spend.dashboardId);
   });
 
   it("carries per-page Genie prompts", () => {
-    const summary = bundledRegistry.assets.spend.pages.find(
-      (p) => p.pageId === "summary"
-    );
-    expect(summary?.summaryPrompt.toUpperCase()).toContain("SPEND");
-    expect(summary?.suggestions).toHaveLength(3);
+    for (const asset of Object.values(bundledRegistry.assets)) {
+      for (const page of asset.pages) {
+        expect(page.summaryPrompt.trim()).not.toBe("");
+        expect(page.suggestions).toHaveLength(3);
+      }
+    }
+    expect(
+      bundledRegistry.assets.spend.pages[0].summaryPrompt.toUpperCase()
+    ).toContain("SPEND");
   });
 });

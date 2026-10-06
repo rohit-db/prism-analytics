@@ -1,0 +1,15 @@
+FEVM Travel demo resource IDs (2026-08-03):
+- workspace: https://fevm-serverless-stable-71zsua.cloud.databricks.com
+- warehouse_id: 28bc4299a384d531
+- catalog.schema: serverless_stable_71zsua_catalog.prism_travel
+- fact table: summarydataset (250k rows)
+- metric view: travel_metrics
+- dashboard_id: 01f18f35b8561fb79677c244188f4c16 (published, embed_credentials=true)
+- dashboard embed URL base: https://fevm-serverless-stable-71zsua.cloud.databricks.com/embed/dashboardsv3/01f18f35b8561fb79677c244188f4c16
+- genie_space_id: 01f18f363d9e193495d201f4b836151d (Prism Travel Intelligence, verified answering)
+- sp_tenant_mapping table + tenant_row_filter(client_id) function: CREATED (filter NOT yet attached to summarydataset — attach via Admin onboarding after repoint so dashboard/Genie keep working)
+- app SP: prism-app / d6788b74-c99b-45db-b392-8b89c94c97fd (CAN_RUN dashboard+genie, CAN_USE warehouse, SELECT data)
+- Lakebase: prism-edge (provisioned CU_1, us-east-2), dns ep-polished-resonance-d8hn0eqy.database.us-east-2.cloud.databricks.com
+- demo users seeded into apex_app_users: alice@acmetravel.com, ben@globex.com, dana@prism.example (all pw apex)
+- .env repointed to FEVM (backup: .env.bcd-backup, gitignored). Verified: login 303, embed-token ok, genie-mcp health ok.
+- embedding: workspace policy ALLOW_APPROVED_DOMAINS; approved_domains set to [localhost, localhost:8000] (was EMPTY -> caused dashboard login prompt). Add real hosting domain when deployed.

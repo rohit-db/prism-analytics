@@ -1,13 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Sparkles,
   ArrowUp,
   ArrowRight,
-  DollarSign,
-  Leaf,
-  Users,
-  Plane,
   TrendingUp,
   TrendingDown,
   MessageCircle,
@@ -16,11 +12,15 @@ import {
 import {
   fetchKpis,
   fetchKpiTrend,
+  ICON_MAP,
   type KpiValues,
   type KpiResponse,
   type TrendPoint,
 } from "@/config";
 import { useUser } from "@/hooks/useUser";
+import { useRoutes } from "@/registry/useRegistry";
+import { useContent, useBrand } from "@/appconfig/useAppConfig";
+import type { KpiSpec } from "@/appconfig/appConfig";
 import GradientMark from "@/theme/GradientMark";
 
 // ─── KPI presentation config ──────────────────────────────────────────────────
@@ -47,42 +47,49 @@ const compact = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
-const KPIS: KpiMeta[] = [
-  {
-    key: "spend",
-    label: "Total Spend",
-    icon: DollarSign,
-    format: (n) => currency.format(n),
-    goodDirection: "neutral",
-  },
-  {
-    key: "emissions",
-    label: "CO₂ Emissions",
-    icon: Leaf,
-    format: (n) => `${compact.format(n)} tCO₂e`,
-    goodDirection: "down",
-  },
-  {
-    key: "travelers",
-    label: "Travelers",
-    icon: Users,
-    format: (n) => compact.format(n),
-    goodDirection: "neutral",
-  },
-  {
-    key: "trips",
-    label: "Trips",
-    icon: Plane,
-    format: (n) => compact.format(n),
-    goodDirection: "neutral",
-  },
-];
+const decimal = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+const percent = new Intl.NumberFormat("en-US", {
+  style: "percent",
+  maximumFractionDigits: 1,
+});
 
-const SUGGESTIONS = [
-  "Total spend by category this year",
-  "Top 5 countries by CO₂ emissions",
-  "How is spend trending vs last year?",
-];
+/** Fallback icon for a KPI whose configured `icon` name isn't in ICON_MAP. */
+const KPI_ICON_FALLBACK: LucideIcon = TrendingUp;
+
+/**
+ * Build the KPI tile metadata from the runtime content config, so a vertical's tiles
+ * (labels, icons, number formats) come from content.config.json rather than code.
+ * The `key` must match a key in the /api/kpis response — the server's KPI_MEASURES
+ * owns measure→key, this owns key→label.
+ */
+function buildKpis(specs: KpiSpec[]): KpiMeta[] {
+  return specs.map((s) => {
+    const unit = s.unit ? ` ${s.unit}` : "";
+    const format = (n: number): string => {
+      switch (s.format) {
+        case "currency":
+          return currency.format(n);
+        case "percent":
+          return percent.format(n);
+        case "decimal":
+          return `${decimal.format(n)}${unit}`;
+        default:
+          return `${compact.format(n)}${unit}`;
+      }
+    };
+    return {
+      key: s.key as KpiKey,
+      label: s.label,
+      icon: (s.icon && ICON_MAP[s.icon]) || KPI_ICON_FALLBACK,
+      format,
+      // Emissions-style measures are better when they fall; everything else is neutral.
+      goodDirection: /emission|co2|cancel|return|discount/i.test(s.key) ? "down" : "neutral",
+    } satisfies KpiMeta;
+  });
+}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -96,6 +103,16 @@ function greeting(): string {
 export default function HomePage() {
   const navigate = useNavigate();
   const { user } = useUser();
+  const content = useContent();
+  const brand = useBrand();
+  const routes = useRoutes();
+  const kpiMetas = useMemo(() => buildKpis(content.kpis), [content.kpis]);
+  // The dashboard routes this instance actually serves, capped at two so the row stays
+  // three-up alongside the Ask card.
+  const quickCards = useMemo(
+    () => routes.filter((r) => r.dashboard).slice(0, 2),
+    [routes]
+  );
   const [input, setInput] = useState("");
   const [kpis, setKpis] = useState<KpiResponse | null>(null);
   const [kpiLoading, setKpiLoading] = useState(true);
@@ -136,14 +153,13 @@ export default function HomePage() {
           <div className="relative z-10">
             <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
               <GradientMark size={20} />
-              {user?.tenant || "Prism Travel Intelligence"}
+              {user?.tenant || content.hero.title}
             </div>
             <h1 className="mt-2 text-2xl md:text-[28px] font-semibold tracking-tight text-foreground">
               {greeting()}, {firstName}.
             </h1>
             <p className="mt-1.5 max-w-lg text-[14px] leading-relaxed text-muted-foreground">
-              Ask anything about your travel program, or jump into a dashboard. Grounded
-              answers with live SQL — governed end to end.
+              {content.hero.subtitle}
             </p>
 
             {/* Ask Prism composer */}
@@ -160,7 +176,7 @@ export default function HomePage() {
                 autoFocus
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask Prism about spend, emissions, bookings…"
+                placeholder={content.askPlaceholder}
                 className="flex-1 bg-transparent py-1 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
               <button
@@ -173,7 +189,7 @@ export default function HomePage() {
             </form>
 
             <div className="mt-3 flex flex-wrap gap-2">
-              {SUGGESTIONS.map((q) => (
+              {content.suggestedQuestions.map((q) => (
                 <button
                   key={q}
                   onClick={() => ask(q)}
@@ -196,7 +212,7 @@ export default function HomePage() {
               <span className="text-[11px] text-muted-foreground">vs. prior year</span>
             </div>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {KPIS.map((meta) =>
+              {kpiMetas.map((meta) =>
                 kpiLoading ? (
                   <KpiSkeleton key={meta.key} />
                 ) : (
@@ -215,26 +231,31 @@ export default function HomePage() {
         {/* ── Trends ───────────────────────────────────────────────────── */}
         {(trendLoading || (trend && trend.length > 0)) && (
           <section className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {/* The server charts the FIRST TWO configured measures and exposes them under
+                the legacy `spend`/`emissions` aliases, so these two cards work for every
+                vertical while taking their titles and formatting from the config. */}
             <TrendCard
-              title="Spend trend"
-              subtitle="Monthly gross spend"
+              title={content.trend.title}
+              subtitle={content.trend.subtitle}
               accent="var(--primary)"
               points={trend}
               loading={trendLoading}
               variant="area"
-              format={(n) => currency.format(n)}
+              format={kpiMetas[0]?.format ?? ((n) => currency.format(n))}
               pick={(p) => p.spend}
             />
-            <TrendCard
-              title="Emissions trend"
-              subtitle="Monthly CO₂ (tCO₂e)"
-              accent="var(--chart-2)"
-              points={trend}
-              loading={trendLoading}
-              variant="bar"
-              format={(n) => `${compact.format(n)} t`}
-              pick={(p) => p.emissions}
-            />
+            {kpiMetas[1] && (
+              <TrendCard
+                title={`${kpiMetas[1].label} trend`}
+                subtitle={`Monthly ${kpiMetas[1].label.toLowerCase()}`}
+                accent="var(--chart-2)"
+                points={trend}
+                loading={trendLoading}
+                variant="bar"
+                format={kpiMetas[1].format}
+                pick={(p) => p.emissions}
+              />
+            )}
           </section>
         )}
 
@@ -243,22 +264,21 @@ export default function HomePage() {
           <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Jump back in
           </h2>
+          {/* Derived from the registry (not hardcoded) so these always match the actual
+              dashboards this instance serves, whatever the vertical. */}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <QuickCard
-              icon={DollarSign}
-              title="Spend"
-              desc="Category, destination & year-over-year spend analysis."
-              onClick={() => navigate("/spend-custom")}
-            />
-            <QuickCard
-              icon={Leaf}
-              title="Sustainability"
-              desc="Emissions, carbon intensity & forecasting."
-              onClick={() => navigate("/sustainability")}
-            />
+            {quickCards.map((r) => (
+              <QuickCard
+                key={r.path}
+                icon={(r.icon && ICON_MAP[r.icon]) || ICON_MAP.BarChart3}
+                title={r.label}
+                desc={`Explore ${r.label.toLowerCase()}.`}
+                onClick={() => navigate(r.path)}
+              />
+            ))}
             <QuickCard
               icon={MessageCircle}
-              title="Ask Prism"
+              title={`Ask ${brand.identity.shortName}`}
               desc="Full conversational analytics with history."
               onClick={() => navigate("/genie-mcp")}
             />

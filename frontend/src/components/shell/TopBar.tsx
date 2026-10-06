@@ -7,7 +7,7 @@ import ThemeToggle from "@/theme/ThemeToggle";
 import { useLocation } from "react-router-dom";
 import { useRoutes } from "@/registry/useRegistry";
 import { useUser } from "@/hooks/useUser";
-import { brand } from "@/theme/brand";
+import { useBrand } from "@/appconfig/useAppConfig";
 
 const SECTION_LABELS: Record<string, string> = {
   insights: "Insights & Analytics",
@@ -18,6 +18,8 @@ export default function TopBar({ collapsed, onToggle }: { collapsed: boolean; on
   const location = useLocation();
   const routes = useRoutes();
   const { user } = useUser();
+  // Runtime brand, so a config-only re-skin renames the app in the top bar too.
+  const brand = useBrand();
 
   const currentRoute = routes.find((r) => r.path === location.pathname);
   const pageTitle = currentRoute?.label ?? brand.identity.appName;

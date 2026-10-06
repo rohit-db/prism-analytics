@@ -1,4 +1,5 @@
 .env
+.env.*
 *.pyc
 __pycache__/
 .venv/
@@ -9,6 +10,7 @@ dist/
 build/
 *.tsbuildinfo
 .databricks/
+.databricks-resources.json
 .superpowers/
 .isaac/
 edge/.env

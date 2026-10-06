@@ -22,7 +22,7 @@ Env contract (see ``.env.example``)::
     PGHOST=ep-xxxx.database.<region>.cloud.databricks.com
     PGPORT=5432
     PGDATABASE=databricks_postgres
-    PGUSER=<sp-client-id or user email>
+    PGUSER=<sp-client-id or user email>   # defaults to DATABRICKS_CLIENT_ID
     PGSSLMODE=require
 """
 from __future__ import annotations
@@ -60,7 +60,14 @@ LAKEBASE_PROFILE = os.environ.get("LAKEBASE_PROFILE", "").strip()
 PGHOST = os.environ.get("PGHOST", "").strip()
 PGPORT = os.environ.get("PGPORT", "5432").strip() or "5432"
 PGDATABASE = os.environ.get("PGDATABASE", "databricks_postgres").strip() or "databricks_postgres"
-PGUSER = os.environ.get("PGUSER", "").strip()
+# The Postgres role is the Databricks identity the credential was minted for.
+# On Databricks Apps that is the app's own Service Principal, whose client id the
+# platform injects — so deployments don't have to hardcode (and keep in sync) an
+# SP id that the platform already knows.
+PGUSER = (
+    os.environ.get("PGUSER", "").strip()
+    or os.environ.get("DATABRICKS_CLIENT_ID", "").strip()
+)
 PGSSLMODE = os.environ.get("PGSSLMODE", "require").strip() or "require"
 
 

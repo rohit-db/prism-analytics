@@ -187,6 +187,9 @@ def _validate_nav(nav: Any) -> None:
     # bool is an int subclass — reject it explicitly so True/False isn't an "order".
     if order is not None and (isinstance(order, bool) or not isinstance(order, int)):
         raise ValueError("spec.nav.order must be an integer")
+    placeholder = nav.get("placeholder")
+    if placeholder is not None and not isinstance(placeholder, bool):
+        raise ValueError("spec.nav.placeholder must be a boolean")
 
 
 def registry_writable() -> bool:

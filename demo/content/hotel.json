@@ -1,0 +1,22 @@
+{
+  "hero": {
+    "title": "Property Performance",
+    "subtitle": "Revenue, rate and channel performance across your portfolio."
+  },
+  "kpis": [
+    { "key": "spend", "label": "Total Revenue", "format": "currency", "icon": "DollarSign" },
+    { "key": "adr", "label": "Average Daily Rate", "format": "currency", "icon": "TrendingUp" },
+    { "key": "rooms", "label": "Rooms Sold", "format": "number", "icon": "BedDouble" },
+    { "key": "trips", "label": "Reservations", "format": "number", "icon": "CalendarCheck" }
+  ],
+  "trend": {
+    "title": "Revenue trend",
+    "subtitle": "Monthly total revenue"
+  },
+  "suggestedQuestions": [
+    "Total revenue by property this year",
+    "Which channels deliver the highest ADR?",
+    "How does revenue split across room, F&B and other?"
+  ],
+  "askPlaceholder": "Ask about revenue, ADR, occupancy…"
+}

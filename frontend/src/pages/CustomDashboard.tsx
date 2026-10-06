@@ -5,10 +5,10 @@ import { WORKSPACE, ORG, buildTokenEmbedUrl, fetchEmbedToken, shouldPassEmbedFil
 import type { DashboardSpec, FilterState } from "@/config";
 import type { AssetPage } from "@/registry/types";
 
-// Config payload that hides the "Powered by Databricks" footer. Mirrors what
-// @databricks/aibi-client sends; we re-send it ourselves after any iframe reload
-// because the SDK only pushes it once (after the first DATABRICKS_EMBED_READY).
-const LOGO_CONFIG = { version: 1, hideRefreshButton: false, hideDatabricksLogo: true };
+// Default global-filter behavior when a dashboard spec doesn't override it. The
+// host FilterBar is the only filter UI (filters are driven via the embed URL),
+// so we hide the dashboard's own global-filter panel + toggle entirely.
+const DEFAULT_GLOBAL_FILTER_VISIBILITY = "disabled" as const;
 
 // The embedded dashboard renders its own page header/title bar at the top. We
 // crop it by shifting the iframe up and over-sizing its height (the SDK renders
@@ -55,6 +55,16 @@ export default function CustomDashboard({
   const orgId = spec.org ?? ORG;
   const currentPageId = activePageId || pages[0]?.pageId || "";
 
+  // Embed config pushed to the dashboard. We re-send it ourselves after every
+  // iframe reload because the SDK only pushes it once (after the first
+  // DATABRICKS_EMBED_READY). `hideDatabricksLogo` drops the footer logo;
+  // `globalFilterVisibility` controls the dashboard's native global-filter panel.
+  const embedConfig = {
+    version: 1,
+    hideDatabricksLogo: true,
+    globalFilterVisibility: spec.globalFilterVisibility ?? DEFAULT_GLOBAL_FILTER_VISIBILITY,
+  };
+
   const containerRef = useRef<HTMLDivElement>(null);
   const dashRef = useRef<DatabricksDashboard | null>(null);
   const tokenRef = useRef<string>("");
@@ -82,7 +92,7 @@ export default function CustomDashboard({
       if (e.data?.type === "DATABRICKS_EMBED_READY") {
         const iframe = containerRef.current?.querySelector("iframe");
         iframe?.contentWindow?.postMessage(
-          { type: "DATABRICKS_SET_CONFIG", config: LOGO_CONFIG },
+          { type: "DATABRICKS_SET_CONFIG", config: embedConfig },
           instanceUrl
         );
         window.removeEventListener("message", onReady);
@@ -136,7 +146,7 @@ export default function CustomDashboard({
         pageId: currentPageId || undefined,
         token: res.token,
         container: containerRef.current,
-        config: { version: 1, hideDatabricksLogo: true },
+        config: embedConfig,
         getNewToken: async () => {
           const r = await fetchEmbedToken(dashboardId);
           if (r.ok && r.token) tokenRef.current = r.token;

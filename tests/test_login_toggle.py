@@ -1,5 +1,5 @@
 from server.auth import users as users_repo
-from server.auth.login import _render_login_page
+from server.auth.login import render_login_page
 
 
 def test_list_logins_includes_role(monkeypatch):
@@ -17,7 +17,7 @@ def test_list_logins_includes_role(monkeypatch):
 
 def test_render_has_mode_toggle(monkeypatch):
     monkeypatch.setattr(users_repo, "LAKEBASE_ENABLED", False)
-    html_out = _render_login_page()
+    html_out = render_login_page()
     # A segmented toggle with both modes is present.
     assert 'data-mode-toggle' in html_out
     assert 'data-mode="user"' in html_out
@@ -26,7 +26,7 @@ def test_render_has_mode_toggle(monkeypatch):
 
 def test_render_tags_chips_with_role(monkeypatch):
     monkeypatch.setattr(users_repo, "LAKEBASE_ENABLED", False)
-    html_out = _render_login_page()
+    html_out = render_login_page()
     # Chips carry their role so the client can filter them.
     assert 'data-role="operator"' in html_out
     assert 'data-role="user"' in html_out
@@ -34,21 +34,21 @@ def test_render_tags_chips_with_role(monkeypatch):
 
 def test_operator_mode_sets_operator_view(monkeypatch):
     monkeypatch.setattr(users_repo, "LAKEBASE_ENABLED", False)
-    html_out = _render_login_page(mode="operator")
+    html_out = render_login_page(mode="operator")
     # Operator mode marks the page so the cue + default-active toggle apply.
     assert 'data-active-mode="operator"' in html_out
 
 
 def test_user_mode_is_default(monkeypatch):
     monkeypatch.setattr(users_repo, "LAKEBASE_ENABLED", False)
-    html_out = _render_login_page()
+    html_out = render_login_page()
     assert 'data-active-mode="user"' in html_out
 
 
 def test_demo_logins_gate_hides_chips(monkeypatch):
     monkeypatch.setattr(users_repo, "LAKEBASE_ENABLED", False)
     monkeypatch.setenv("AUTH_SHOW_DEMO_LOGINS", "false")
-    html_out = _render_login_page()
+    html_out = render_login_page()
     # No chips rendered when demo logins are disabled.
     assert 'class="chip"' not in html_out
     # But the sign-in form is still there.
