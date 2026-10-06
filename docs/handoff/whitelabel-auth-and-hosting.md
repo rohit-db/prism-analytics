@@ -295,6 +295,69 @@ grant surfaces as `RESOURCE_DOES_NOT_EXIST` on the operator's embed, because
 Databricks reports an unreadable dashboard as missing rather than forbidden.
 `scripts/tenants/grant_resource_access.py` grants all of them, idempotently.
 
+### Workspace IP access lists gate the edge (Model A)
+
+If the workspace enforces IP access lists, **the Apps front door enforces them
+too**, even though `*.databricksapps.com` is a different hostname from the
+workspace API. Forwarding to the app is the edge's entire job, so an
+off-allowlist edge is a dead deployment no matter how the code is written.
+Measured from a Vercel function against FEVM:
+
+| Hop | Off-allowlist result |
+|---|---|
+| `POST /oidc/v1/token` (mint the edge SP bearer) | **200 — not IP-governed** |
+| `GET /api/2.0/...` (workspace REST) | 403 |
+| `GET <app>/api/health` (Apps front door) | 403 |
+| Lakebase `:5432` (TCP) | reachable — separate path |
+
+> **Token minting is exempt, so "auth works" is a false pass.** The SP
+> authenticates fine from a blocked IP; only the next hop fails. Test the hops
+> separately or you will conclude the credentials are wrong. The 403 body names
+> the control and the address — `Source IP address: <ip> is blocked by
+> Databricks IP ACL for workspace: <id>` — so read it rather than guessing.
+
+**The allowlist side is self-service.** Allow lists are *unioned*, so adding your
+own leaves a managed list (on FEVM, `fevm-managed-allowlist-DoNotModify`)
+untouched; FEVM's admins permit user-added lists at **`/27` or narrower**, which
+a `/32` satisfies. Verified: adding one `/32` cleared both the workspace API and
+the Apps front door, the app hop within a minute.
+
+```bash
+databricks ip-access-lists create --json '{
+  "label": "prism-edge-<host>", "list_type": "ALLOW",
+  "ip_addresses": ["<egress-ip>/32"]
+}'
+```
+
+**The real constraint is a stable egress IP, and that is the part that bites.**
+Default serverless egress pools rotate: a Vercel function was observed using
+three different addresses inside thirty minutes, and access broke the instant it
+rotated. Platform defaults are therefore unusable, including Render's *published*
+shared ranges — those are predictable but a `/24`, eight times wider than the
+`/27` ceiling, and shared with every other customer in the region.
+
+| Option | Cost | Exclusive to you? |
+|---|---|---|
+| Vercel Static IPs — pair per region | $100/mo per project | No — shared VPC pool |
+| Render Dedicated IPs — 3 IPv4, one per AZ | $100/mo per set | **Yes** — workspace only |
+| Own NAT / elastic IP (EC2, ECS) | infra only | Yes |
+
+At equal price, prefer a *dedicated* set: allowlisting a shared-pool address
+grants the same access to every other tenant egressing from it, which quietly
+widens the boundary the ACL exists to enforce. Note also that static egress does
+**not** apply to edge/middleware runtimes on either platform — a reverse proxy is
+a tempting thing to build as middleware, and doing so silently bypasses the
+static IP.
+
+> **Expect uneven propagation when changing an ACL.** At a constant egress IP,
+> the workspace API alternated between 403 and 200 for ~10 minutes while the app
+> hop was already reachable: the update lands on Databricks frontends at
+> different times. Do not conclude a change failed from a single probe.
+
+The cheapest escape is to skip the problem: on a workspace **without** IP access
+lists, any host works with no static-IP add-on. Reserve the above for when the
+edge must front an ACL-enforcing workspace.
+
 ### How the SP identity powers all Databricks calls off-platform
 
 Running externally, **every** Databricks call is made **as the Service Principal**.

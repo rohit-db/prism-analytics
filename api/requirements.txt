@@ -1,0 +1,22 @@
+# Dependencies for the Vercel-hosted edge gateway (api/index.py).
+#
+# Deliberately NOT the repo-root requirements.txt: that one is the Databricks
+# App's, and installing the Genie MCP stack into a serverless function is both
+# slow and unnecessary — the edge only proxies. Vercel resolves this file
+# because it sits beside the entrypoint.
+fastapi~=0.140.0
+httpx~=0.28.1
+# The Lakebase user directory; edge/db.py imports psycopg at module scope, so it
+# is required even when LAKEBASE is left unconfigured.
+psycopg[binary]~=3.2.0
+databricks-sdk~=0.81.0
+# Pulled in transitively by the shared login template (server.auth.login ->
+# server.lakebase). Without it the edge silently serves the unbranded fallback
+# page; /__edge/health reports which template is live.
+python-dotenv~=1.1
+# Required to POST the login form: starlette/formparsers.py imports
+# python_multipart at module scope, so `await request.form()` fails even for
+# urlencoded bodies. Nothing declares it — locally it arrives transitively — and
+# the symptom is a bare 500 on sign-in.
+python-multipart~=0.0.20
+

@@ -17,3 +17,4 @@ edge/.env
 
 # Local QA/verification screenshots (not part of the repo)
 /*.png
+.vercel

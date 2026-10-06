@@ -1,0 +1,31 @@
+# The Vercel project root is the repo root (see api/index.py for why), so trim
+# it to what the edge gateway actually imports: `edge/`, the parts of `server/`
+# behind the shared login template, and brand.config.json.
+#
+# The SPA is deliberately excluded — it is served by the Databricks App, and the
+# edge only proxies to it.
+frontend/
+node_modules/
+.git/
+docs/
+tests/
+scripts/
+resources/
+.databricks/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+
+# `vercel build` run locally writes api/pyproject.toml + api/uv.lock from the
+# local uv config. On this machine that pins an internal Databricks package
+# proxy, and once uploaded it takes precedence over api/requirements.txt — the
+# remote build then hangs fetching from a host it cannot reach. Keep resolution
+# on requirements.txt by never shipping these.
+api/pyproject.toml
+api/uv.lock
+uv.lock
+.python-version

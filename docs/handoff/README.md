@@ -146,6 +146,11 @@ These are real quirks in the current code that will otherwise cost you an hour:
   with `invalid_authorization_details`. Onboarding auto-grants the dashboards in
   `DASHBOARD_IDS`; operators can adjust later via the Admin **"Manage access"**
   dialog. Same applies to Genie spaces the tenant should reach.
+- **Under workspace IP access lists, minting an SP token still succeeds from a
+  blocked IP.** The OIDC endpoint is not IP-governed, so hosting the edge off an
+  allowlisted network looks like a credential problem when the token works and
+  the *next* call 403s. The Apps front door enforces the ACL too, despite being a
+  different hostname. See the IP-ACL section of the white-label hosting doc.
 
 ---
 
